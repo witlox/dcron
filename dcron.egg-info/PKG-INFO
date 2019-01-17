@@ -1,0 +1,26 @@
+Metadata-Version: 1.2
+Name: dcron
+Version: 0.1
+Summary: Distributed Cronlike Scheduler
+Home-page: https://github.com/witlox/dcron
+Author: Pim Witlox
+Author-email: pim@witlox.io
+License: GPLv3
+Project-URL: Documentation, https://dcron.readthedocs.io/en/latest/
+Project-URL: Source, https://github.com/witlox/dcron
+Project-URL: Tracker, https://github.com/witlox/dcron/issues
+Description: UNKNOWN
+Keywords: Python,Python3
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: System Administrators
+Classifier: Natural Language :: English
+Classifier: Environment :: Console
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Topic :: Utilities
+Requires-Python: >=3.5
