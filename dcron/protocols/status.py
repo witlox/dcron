@@ -23,36 +23,31 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from threading import Thread
+from datetime import datetime
 
-from flask import Flask
-from gevent.pywsgi import WSGIServer
-
-app = Flask('dcron')
+from dcron.protocols.base import Serializable
 
 
-@app.route('/')
-def hello():
-    return "Hello World!"
+class StatusMessage(Serializable):
 
+    def __init__(self, ip=None, system_load=None):
+        """
+        our serializable Status Message
+        :param ip: ip address
+        :param system_load: system load (0-100%)
+        """
+        self.ip = ip
+        self.time = datetime.utcnow()
+        self.system_load = system_load
 
-class WebServer:
+    @staticmethod
+    def load(data):
+        obj = Serializable.load(data)
+        if obj and isinstance(obj, StatusMessage):
+            return obj
+        return None
 
-    ws_thread = None
-
-    def __init__(self, port):
-        self.server = WSGIServer(('', port), app)
-
-    def start(self):
-        # self.ws_thread = Thread(target=self.server.start())
-        # self.ws_thread.setDaemon(True)
-        # self.ws_thread.start()
-        self.server.start()
-
-    def stop(self):
-        # if self.ws_thread:
-        #     self.server.stop()
-        #     self.ws_thread.join()
-        # self.ws_thread = None
-        self.server.stop()
-
+    def __eq__(self, other):
+        if not other or not isinstance(other, StatusMessage):
+            return False
+        return self.ip == other.ip and self.time == other.time

@@ -23,36 +23,27 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from threading import Thread
-
-from flask import Flask
-from gevent.pywsgi import WSGIServer
-
-app = Flask('dcron')
+import logging
+import socket
 
 
-@app.route('/')
-def hello():
-    return "Hello World!"
+def client(port, data):
+    """
+    broadcast UDP data
+    :param port: port to broadcast to
+    :param data: udp packet to send
+    """
+    logger = logging.getLogger('udp_client')
 
+    addr = ('255.255.255.255', port)
+    udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-class WebServer:
+    if hasattr(socket, 'SO_BROADCAST'):
+        udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-    ws_thread = None
+    if udp_socket.sendto(data, addr):
+        logger.debug("sent data {0} to port {1}".format(data, port))
+    else:
+        logger.warning("failed to send data to port {0}".format(port))
 
-    def __init__(self, port):
-        self.server = WSGIServer(('', port), app)
-
-    def start(self):
-        # self.ws_thread = Thread(target=self.server.start())
-        # self.ws_thread.setDaemon(True)
-        # self.ws_thread.start()
-        self.server.start()
-
-    def stop(self):
-        # if self.ws_thread:
-        #     self.server.stop()
-        #     self.ws_thread.join()
-        # self.ws_thread = None
-        self.server.stop()
-
+    udp_socket.close()

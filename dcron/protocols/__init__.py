@@ -23,36 +23,25 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from threading import Thread
+import dcron.protocols.base
+import dcron.protocols.cronjob
+import dcron.protocols.status
 
-from flask import Flask
-from gevent.pywsgi import WSGIServer
-
-app = Flask('dcron')
-
-
-@app.route('/')
-def hello():
-    return "Hello World!"
+from dcron.protocols.packet import Packet
 
 
-class WebServer:
-
-    ws_thread = None
-
-    def __init__(self, port):
-        self.server = WSGIServer(('', port), app)
-
-    def start(self):
-        # self.ws_thread = Thread(target=self.server.start())
-        # self.ws_thread.setDaemon(True)
-        # self.ws_thread.start()
-        self.server.start()
-
-    def stop(self):
-        # if self.ws_thread:
-        #     self.server.stop()
-        #     self.ws_thread.join()
-        # self.ws_thread = None
-        self.server.stop()
-
+def group(data):
+    """
+    group packets by uuid
+    :param data: list of raw udp_packet
+    :return: dict(uuid, list(packet))
+    """
+    groups = {}
+    for elem in data:
+        p = Packet.decode(elem)
+        if not p:
+            p = elem
+        if p.id not in groups.keys():
+            groups[p.id] = []
+        groups[p.id].append(p)
+    return groups

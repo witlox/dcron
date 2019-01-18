@@ -23,36 +23,36 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from threading import Thread
+import random
+import string
 
-from flask import Flask
-from gevent.pywsgi import WSGIServer
-
-app = Flask('dcron')
-
-
-@app.route('/')
-def hello():
-    return "Hello World!"
+from dcron.protocols import Packet
+from dcron.protocols.cronjob import CronJob
+from dcron.protocols.status import StatusMessage
 
 
-class WebServer:
+def test_packet_encoding_and_decoding():
+    data = b'hello world'
+    p = Packet(1, 1, data)
+    encoded = p.encode()
+    assert p == Packet.decode(encoded)
 
-    ws_thread = None
 
-    def __init__(self, port):
-        self.server = WSGIServer(('', port), app)
+def test_status_message_dumps_loads():
+    sm = StatusMessage('127.0.0.1', 0)
+    packets = list(sm.dump())
+    assert len(packets) == 1
+    assert sm == StatusMessage.load(packets)
 
-    def start(self):
-        # self.ws_thread = Thread(target=self.server.start())
-        # self.ws_thread.setDaemon(True)
-        # self.ws_thread.start()
-        self.server.start()
 
-    def stop(self):
-        # if self.ws_thread:
-        #     self.server.stop()
-        #     self.ws_thread.join()
-        # self.ws_thread = None
-        self.server.stop()
+def test_cron_job_message_dumps_loads():
+    cj = CronJob(command="echo 'hello world'")
+    packets = list(cj.dump())
+    assert cj == CronJob.load(packets)
 
+
+def test_cron_with_message_larger_then_max():
+    cj = CronJob(command=''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6000)))
+    packets = list(cj.dump())
+    assert len(packets) > 1
+    assert cj == CronJob.load(packets)
