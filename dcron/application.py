@@ -27,17 +27,17 @@ import argparse
 import asyncio
 import logging
 import time
+
 from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime
 
-from signal import SIGINT
-from asyncio import Queue
+from aiohttp.web_runner import AppRunner, TCPSite
 
 from dcron.datagram.client import client
 from dcron.datagram.server import StatusProtocolServer
 from dcron.protocols.status import StatusMessage
 from dcron.scheduler import Scheduler
-from dcron.site import WebServer
+from dcron.site import Site
 from dcron.storage import Storage
 from dcron.utils import get_ip, get_ntp_offset, get_load
 
@@ -87,7 +87,7 @@ def main():
 
         scheduler = Scheduler(storage, args.node_staleness)
 
-        async def timed_schedule():
+        def timed_schedule():
             while running:
                 time.sleep(60)
                 if not scheduler.check_cluster_state():
@@ -100,17 +100,21 @@ def main():
 
         loop.create_task(scheduled())
 
-        # logger.info("starting web server on http://{0}:{1}/".format(get_ip(), args.web_port))
-        # web_server = WebServer(args.web_port)
-        # web_server.start()
+        logger.info("starting web application server on http://{0}:{1}/".format(get_ip(), args.web_port))
+
+        s = Site(storage, args.communication_port)
+        runner = AppRunner(s.app)
+        loop.run_until_complete(runner.setup())
+        site_instance = TCPSite(runner, port=args.web_port)
+        loop.run_until_complete(site_instance.start())
 
         try:
             loop.run_forever()
         except:
             logger.info("interrupt received")
 
-        # logger.info("stopping web server")
-        # web_server.stop()
+        logger.info("stopping web application")
+        loop.run_until_complete(site_instance.stop())
 
         running = False
 

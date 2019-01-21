@@ -31,9 +31,9 @@ from setuptools import setup
 
 version = "0.1"
 
-requirements = ['flask', 'gevent', 'aiofiles']
+requirements = ['aiohttp', 'aiofiles', 'aiohttp_jinja2']
 
-test_requirements = ["pytest", "tox"]
+test_requirements = ['pytest', 'tox']
 
 if sys.argv[-1] == "tag":
     os.system("git tag -a {0} -m 'version {1}'".format(version, version))

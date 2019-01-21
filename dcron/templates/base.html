@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>
+        {% block title %}
+        {% endblock %}
+    </title>
+    <link href="{{ url('static', filename='css/site.css') }}" rel="stylesheet">
+    <link href="{{ url('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+    <script src="{{ url('static', filename='js/jquery-3.3.1.css') }}"></script>
+    <script src="{{ url('static', filename='js/bootstrap.min.css') }}"></script>
+    {% block head %}
+    {% endblock %}
+</head>
+<h1>welcome to the distributed cronlike scheduler</h1>
+<h2>for more information visit: </h2>
+<body>
+    {% block content%}
+    {% endblock %}
+</body>
+<footer>
+    {% block footer %}
+    {% endblock %}
+</footer>
+</html>

@@ -69,7 +69,10 @@ class StatusProtocolServer:
         selector = selectors.SelectSelector()
         self.loop = asyncio.SelectorEventLoop(selector)
         asyncio.set_event_loop(self.loop)
-        self.transport = self.loop.create_datagram_endpoint(
+        self.transport = self.__init_transport__(buffer)
+
+    def __init_transport__(self, buffer):
+        return self.loop.create_datagram_endpoint(
             lambda: StatusProtocol(buffer), local_addr=('0.0.0.0', self.port)
         )
 

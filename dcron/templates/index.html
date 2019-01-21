@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}
+dcron console
+{% endblock %}
+
+{% block content %}
+<p>overview of active nodes</p>
+<table id="nodes" align="center">
+    <thead>
+        <tr>
+            <th>ip</th>
+            <th>last message</th>
+            <th>load (%)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for node in nodes%}
+        <tr>
+            <td>{{ node.ip }}</td>
+            <td>{{ node.time.strftime('%d.%m.%Y %H:%M:%S') }}</td>
+            <td>{{ "{:,.2f}".format(node.system_load) }}%</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<br/><br/>
+<p>overview of active jobs</p>
+<table id="jobs" align="center">
+    <thead>
+        <tr>
+            <th>minute</th>
+            <th>hour</th>
+            <th>day of month</th>
+            <th>month</th>
+            <th>day_of_week</th>
+            <th>command</th>
+            <th>assigned to</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for job in jobs%}
+        <tr>
+            <td>{% if job.minute %}{{ job.minute }}{% else %} * {% endif %}</td>
+            <td>{% if job.hour %}{{ job.hour }}{% else %} * {% endif %}</td>
+            <td>{% if job.day_of_month %}{{ job.day_of_month }}{% else %} * {% endif %}</td>
+            <td>{% if job.month %}{{ job.month }}{% else %} * {% endif %}</td>
+            <td>{% if job.day_of_week %}{{ job.day_of_week }}{% else %} * {% endif %}</td>
+            <td>{% if job.command %}{{ job.command }}{% else %} * {% endif %}</td>
+            <td>{% if job.assigned_to %}{{ job.assigned_to.ip }}{% else %} * {% endif %}</td>
+            <td><button type="button">-</button></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<br/>
+<div align="center" id="addjob">
+    <button type="button" class="button">add cron job</button>
+</div>
+<div id="jobform">
+    <form action="#" method="get">
+        <table id="jobformtable">
+            <thead>
+                <tr>
+                    <th>minute</th>
+                    <th>hour</th>
+                    <th>day of month</th>
+                    <th>month</th>
+                    <th>day of week</th>
+                    <th>command</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><input type="text" name="minute" id="minute" value="*"/></td>
+                    <td><input type="text" name="hour" id="hour" value="*"/></td>
+                    <td><input type="text" name="day_of_month" id="day_of_month" value="*"/></td>
+                    <td><input type="text" name="month" id="month" value="*"/></td>
+                    <td><input type="text" name="day_of_week" id="day_of_week" value="*"/></td>
+                    <td><input type="text" name="command" id="command"/></td>
+                </tr>
+            </tbody>
+        </table>
+        <div id="formbuttons" align="center">
+            <input type="submit" class="button" value="add"/>
+            <input type="submit" class="button" value="cancel"/>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block footer %}
+<p>hideeho</p>
+{% endblock %}

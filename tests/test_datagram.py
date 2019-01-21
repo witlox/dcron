@@ -25,6 +25,8 @@
 
 import asyncio
 
+import pytest
+
 from dcron.datagram.client import client
 from dcron.datagram.server import StatusProtocolServer
 from dcron.protocols import Packet
@@ -35,28 +37,6 @@ from dcron.storage import Storage
 async def send_packet(port, packets):
     for packet in packets:
         client(port, packet)
-
-
-def test_send_receive_broadcast():
-    port = 12345
-
-    queue = asyncio.Queue()
-    with StatusProtocolServer(queue, port) as loop:
-
-            async def packet_received():
-                while queue.qsize() == 0:
-                    await asyncio.sleep(0.1)
-
-            assert queue.qsize() == 0
-
-            packets = list(StatusMessage('127.0.0.1', 0).dump())
-
-            assert len(packets) == 1
-            assert len(packets[0]) == Packet.max_size
-
-            loop.run_until_complete(asyncio.gather(*[packet_received(), send_packet(port, packets)]))
-
-            assert queue.qsize() == 1
 
 
 def test_send_receive_broadcast_to_storage():

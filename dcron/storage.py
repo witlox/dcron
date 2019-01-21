@@ -104,19 +104,20 @@ class Storage:
                     for packet in packet_groups[uuid]:
                         self.logger.debug("removing status message {0} from buffer".format(uuid))
                         self._buffer.remove(packet)
-        self.logger.debug("pruning memory")
-        for ip in self._cluster_status.keys():
-            states = self._cluster_status[ip]
-            previous_status = None
-            prune_list = []
-            for index, status in enumerate(sorted(states, key=lambda x: x.time)):
-                if previous_status and previous_status.load == status.load:
-                    prune_list.append(index)
-                else:
-                    previous_status = status
-            for index in sorted(prune_list, reverse=True):
-                self.logger.debug("pruning memory: index {0}".format(index))
-                del (self._cluster_status[ip][index])
+        if len(self._cluster_status.values()) >= 10000000:
+            self.logger.debug("pruning memory")
+            for ip in self._cluster_status.keys():
+                states = self._cluster_status[ip]
+                previous_status = None
+                prune_list = []
+                for index, status in enumerate(sorted(states, key=lambda x: x.time)):
+                    if previous_status and previous_status.load == status.load:
+                        prune_list.append(index)
+                    else:
+                        previous_status = status
+                for index in sorted(prune_list, reverse=True):
+                    self.logger.debug("pruning memory: index {0}".format(index))
+                    del (self._cluster_status[ip][index])
         self.queue.task_done()
 
     def put_nowait(self, packet):
@@ -135,7 +136,7 @@ class Storage:
         """
         if ip not in self._cluster_status.keys():
             return None
-        sorted_status = sorted(self._cluster_status[ip], key=lambda s: s.time)
+        sorted_status = sorted(self._cluster_status[ip], key=lambda s: s.time, reverse=True)
         if not sorted_status:
             return None
         return sorted_status[0]

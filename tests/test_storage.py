@@ -70,13 +70,38 @@ def test_store_cron_job_message_to_disk():
     for packet in packets:
         storage.queue.put_nowait(packet)
 
-    loop.run_until_complete(asyncio.gather(*[storage.process()]))
+    loop.run_until_complete(asyncio.gather(storage.process()))
 
-    loop.run_until_complete(asyncio.gather(*[storage.save()]))
+    loop.run_until_complete(asyncio.gather(storage.save()))
 
     assert storage.queue.qsize() == 0
     assert len(list(storage.cron_jobs())) == 1
     assert message == list(storage.cron_jobs())[0]
     assert exists(pickle)
+
+    loop.close()
+
+
+def test_store_retrieve_sorts_correctly():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    storage = Storage()
+
+    ip = '127.0.0.1'
+
+    messages = []
+    for i in range(10):
+        messages.append(StatusMessage(ip, 10))
+
+    for message in messages:
+        packets = message.dump()
+        for packet in packets:
+            storage.queue.put_nowait(packet)
+
+    while not storage.queue.empty():
+        loop.run_until_complete(asyncio.gather(storage.process()))
+
+    assert messages[len(messages) - 1].time == storage.node_state(ip).time
 
     loop.close()

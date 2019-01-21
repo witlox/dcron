@@ -23,36 +23,41 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from threading import Thread
+import pathlib
 
-from flask import Flask
-from gevent.pywsgi import WSGIServer
+import jinja2
 
-app = Flask('dcron')
+from aiohttp import web
+import aiohttp_jinja2 as aiohttp_jinja2
 
-
-@app.route('/')
-def hello():
-    return "Hello World!"
+from dcron.datagram.client import client
+from dcron.protocols.cronjob import CronJob
 
 
-class WebServer:
+class Site:
 
-    ws_thread = None
+    root = pathlib.Path(__file__).parent
 
-    def __init__(self, port):
-        self.server = WSGIServer(('', port), app)
+    def __init__(self, storage, udp_port):
+        self.storage = storage
+        self.udp_port = udp_port
+        self.app = web.Application()
+        aiohttp_jinja2.setup(self.app, loader=jinja2.PackageLoader('dcron', 'templates'))
+        self.app.router.add_static('/static/', path=self.root/'static', name='static')
+        self.app.add_routes([web.get('/', self.get)])
+        self.app.add_routes([web.post('/job', self.add_job)])
+        self.app.add_routes([web.delete('/job', self.delete_job)])
 
-    def start(self):
-        # self.ws_thread = Thread(target=self.server.start())
-        # self.ws_thread.setDaemon(True)
-        # self.ws_thread.start()
-        self.server.start()
+    def broadcast(self, packets):
+        for packet in packets:
+            client(self.udp_port, packet)
 
-    def stop(self):
-        # if self.ws_thread:
-        #     self.server.stop()
-        #     self.ws_thread.join()
-        # self.ws_thread = None
-        self.server.stop()
+    @aiohttp_jinja2.template('index.html')
+    async def get(self, request):
+        return dict(nodes=self.storage.cluster_state(), jobs=self.storage.cron_jobs())
 
+    async def add_job(self, request):
+        pass
+
+    async def delete_job(self, request):
+        pass
