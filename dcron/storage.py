@@ -26,7 +26,6 @@
 import asyncio
 import logging
 import pickle
-from datetime import datetime
 
 from os.path import join, exists
 
@@ -41,8 +40,9 @@ class Storage:
 
     logger = logging.getLogger(__name__)
 
+    queue = asyncio.Queue()
+
     _buffer = []
-    _tasks = []
 
     _cluster_status = {}
     _cluster_jobs = []
@@ -75,12 +75,11 @@ class Storage:
         async with aiofiles.open(path, 'wb') as handle:
             await handle.write(pickle.dumps(self._cluster_status))
 
-    async def process(self, queue):
+    async def process(self):
         """
         processor for our queue
-        :param queue: queue to consume from
         """
-        data = await queue.get()
+        data = await self.queue.get()
         logging.debug("got {0} on processor queue".format(data))
         packet = Packet.decode(data)
         if packet:
@@ -102,12 +101,9 @@ class Storage:
                     self.logger.debug("got full cronjob in buffer ({0}".format(cron_job))
                     if cron_job not in self._cluster_jobs:
                         self._cluster_jobs.append(cron_job)
-        queue.task_done()
-
-    def prune(self):
-        """
-        only keep load changes over time
-        """
+                    for packet in packet_groups[uuid]:
+                        self.logger.debug("removing status message {0} from buffer".format(uuid))
+                        self._buffer.remove(packet)
         self.logger.debug("pruning memory")
         for ip in self._cluster_status.keys():
             states = self._cluster_status[ip]
@@ -120,7 +116,16 @@ class Storage:
                     previous_status = status
             for index in sorted(prune_list, reverse=True):
                 self.logger.debug("pruning memory: index {0}".format(index))
-                del(self._cluster_status[ip][index])
+                del (self._cluster_status[ip][index])
+        self.queue.task_done()
+
+    def put_nowait(self, packet):
+        """
+        put UDP packets on our queue for processing
+        :param packet: UDP packet
+        """
+        self.queue.put_nowait(packet)
+        asyncio.create_task(self.process())
 
     def node_state(self, ip):
         """

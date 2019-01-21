@@ -52,62 +52,54 @@ class Scheduler:
 
     logger = logging.getLogger(__name__)
 
-    def __init__(self, loop, storage, staleness):
-        self.loop = loop
+    def __init__(self, storage, staleness):
+        """
+        Our simplistic CronJob scheduler
+        :param storage: storage class
+        :param staleness: amount of seconds of non-communication to declare a node as stale
+        """
         self.storage = storage
         self.staleness = staleness
 
-    def __enter__(self):
-        self.logger.info("starting scheduler")
-        self.job_check_task = self.loop.create_task(self.periodic_check_jobs())
-        self.state_check_task = self.loop.create_task(self.periodic_check_cluster_state())
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.state_check_task.cancel()
-        self.job_check_task.cancel()
-
-    def active_nodes(self, nodes):
-        for node in nodes:
+    def active_nodes(self):
+        for node in self.storage.cluster_state():
             if datetime.utcnow() - node.time < timedelta(seconds=self.staleness):
                 yield node
 
-    async def periodic_check_jobs(self, interval=60):
+    async def check_jobs(self, now):
         """
-        Periodically check if you have to start an application
-        :param interval: seconds
+        check if you have to start a CronJob
+        :param now: current date time
         """
-        while True:
-            await asyncio.sleep(interval)
-            now = datetime.utcnow()
-            for job in self.storage.cron_jobs():
-                if job.should_run_now(now):
-                    self.logger.info("going to execute timed job: {0}".format(job.command))
-                    job.last_exit_code, job.last_std_out, job.last_std_err = run_async(job.command)
+        for job in self.storage.cron_jobs():
+            if job.should_run_now(now):
+                self.logger.info("going to execute timed job: {0}".format(job.command))
+                job.last_exit_code, job.last_std_out, job.last_std_err = await run_async(job.command)
 
-    async def periodic_check_cluster_state(self, interval=30):
+    def check_cluster_state(self):
         """
-        Periodically check cluster state, if invalid, rebalance
-        :param interval: seconds
+        check cluster state, if invalid, rebalance
+        :return False if rebalanced otherwise True
         """
-        while True:
-            await asyncio.sleep(interval)
-            inactive_nodes = set(self.storage.cluster_state()) - set(self.active_nodes())
-            for job in self.storage.cron_jobs():
-                if not job.is_assigned():
-                    self.logger.info("detected unassigned job ({0}), rebalancing".format(job.command))
-                    self.rebalance()
-                    break
-                if job.is_assigned_to in inactive_nodes:
-                    self.logger.info("detected job ({0}) on inactive node, rebalancing".format(job.command))
-                    self.rebalance()
-                    break
+        left = list(self.storage.cluster_state())
+        right = list(self.active_nodes())
+        inactive_nodes = [i for i in left + right if i not in left or i not in right]
+        for job in self.storage.cron_jobs():
+            if not job.is_assigned():
+                self.logger.debug("detected unassigned job ({0}), rebalancing".format(job.command))
+                self.rebalance()
+                return False
+            if job.assigned_to in inactive_nodes:
+                self.logger.debug("detected job ({0}) on inactive node, rebalancing".format(job.command))
+                self.rebalance()
+                return False
+        return True
 
     def rebalance(self):
         """
-        Redistribute cronjobs over the cluster
+        Redistribute CronJobs over the cluster
         """
-        nodes = [n for n in self.active_nodes(self.storage.cluster_state())]
+        nodes = [n for n in self.active_nodes()]
         jobs = list(self.storage.cron_jobs())
         overlaps = [(l, r) for (l, r) in combinations(jobs, 2) if l.overlapping(r)]
 
@@ -126,6 +118,6 @@ class Scheduler:
 
         for job in jobs:
             if not job.is_assigned():
-                draw = node_pick(len(nodes), 1)
+                draw = node_pick(len(nodes), 1)[0]
                 self.logger.info("assigning jobs {0} to node {1}".format(job, nodes[draw]))
                 job.assign(nodes[draw])

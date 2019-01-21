@@ -24,59 +24,43 @@
 # SOFTWARE.
 
 import asyncio
-from os import remove
-from os.path import exists
+import time
 
 from dcron.protocols.cronjob import CronJob
 from dcron.protocols.status import StatusMessage
+from dcron.scheduler import Scheduler
 from dcron.storage import Storage
 
 
-def test_store_status_message():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
+def test_active_nodes():
+    ip = 'test'
     storage = Storage()
-
-    ip = '127.0.0.1'
-
-    message = StatusMessage(ip, 10)
-
-    packets = message.dump()
-    for packet in packets:
-        storage.queue.put_nowait(packet)
-
-    loop.run_until_complete(asyncio.gather(*[storage.process()]))
-
-    assert storage.queue.qsize() == 0
-    assert message == storage.node_state(ip)
-
-    loop.close()
+    storage._cluster_status[ip] = [StatusMessage(ip, 0)]
+    scheduler = Scheduler(storage, 60)
+    assert len(list(scheduler.active_nodes())) == 1
 
 
-def test_store_cron_job_message_to_disk():
-    pickle = '/tmp/cluster_status.pickle'
-    if exists(pickle):
-        remove(pickle)
+def test_node_staleness():
+    ip = 'test'
+    storage = Storage()
+    storage._cluster_status[ip] = [StatusMessage(ip, 0)]
+    scheduler = Scheduler(storage, 0.1)
+    time.sleep(0.1)
+    assert len(list(scheduler.active_nodes())) == 0
 
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
 
-    storage = Storage(path_prefix='/tmp')
+def test_rebalancing():
+    n1 = 'node1'
+    n2 = 'node2'
+    storage = Storage()
+    storage._cluster_status[n1] = [StatusMessage(n1, 0)]
+    storage._cluster_status[n2] = [StatusMessage(n2, 0)]
+    cj1 = CronJob(1, command="echo 'hello world'")
+    cj2 = CronJob(2, command="echo 'hello world'")
+    storage._cluster_jobs.append(cj1)
+    storage._cluster_jobs.append(cj2)
+    scheduler = Scheduler(storage, 60)
+    assert not scheduler.check_cluster_state()
+    assert scheduler.check_cluster_state()
 
-    message = CronJob(command="echo 'hello world'")
 
-    packets = message.dump()
-    for packet in packets:
-        storage.queue.put_nowait(packet)
-
-    loop.run_until_complete(asyncio.gather(*[storage.process()]))
-
-    loop.run_until_complete(asyncio.gather(*[storage.save()]))
-
-    assert storage.queue.qsize() == 0
-    assert len(list(storage.cron_jobs())) == 1
-    assert message == list(storage.cron_jobs())[0]
-    assert exists(pickle)
-
-    loop.close()

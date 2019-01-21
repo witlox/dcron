@@ -58,10 +58,10 @@ class StatusProtocolServer:
     logger = logging.getLogger(__name__)
     _udp_server_task = None
 
-    def __init__(self, queue, port):
+    def __init__(self, buffer, port):
         """
         our UDP server socket
-        :param queue: asyncio queue to emit packets to
+        :param buffer: storage class with put_nowait (ex. Storage or asyncio queue) to emit packets to
         :param port: broadcast port to listen on
         """
         self.port = port
@@ -70,7 +70,7 @@ class StatusProtocolServer:
         self.loop = asyncio.SelectorEventLoop(selector)
         asyncio.set_event_loop(self.loop)
         self.transport = self.loop.create_datagram_endpoint(
-            lambda: StatusProtocol(queue), local_addr=('0.0.0.0', self.port)
+            lambda: StatusProtocol(buffer), local_addr=('0.0.0.0', self.port)
         )
 
     def __enter__(self):
@@ -87,5 +87,6 @@ class StatusProtocolServer:
         Stop our UDP server
         """
         self.logger.info("stopping UDP server")
-        self.transport.close()
         self._udp_server_task.cancel()
+        self.transport.close()
+        self.loop.close()

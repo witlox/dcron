@@ -26,6 +26,11 @@
 import argparse
 import asyncio
 import logging
+import time
+from concurrent.futures.thread import ThreadPoolExecutor
+from datetime import datetime
+
+from signal import SIGINT
 from asyncio import Queue
 
 from dcron.datagram.client import client
@@ -54,7 +59,7 @@ def main():
     args = parser.parse_args()
 
     if get_ntp_offset(args.ntp_server) > 60:
-        exit("your clock is not in sync with NTP")
+        exit("your clock is not in sync (check system NTP settings)")
 
     root_logger = logging.getLogger()
     if args.log_file:
@@ -65,48 +70,56 @@ def main():
     else:
         root_logger.setLevel(logging.INFO)
 
-    queue = Queue()
+    pool = ThreadPoolExecutor(2)
 
-    system_tasks = []
+    storage = Storage(args.storage_path)
 
-    with StatusProtocolServer(queue, args.communication_port) as loop:
+    with StatusProtocolServer(storage, args.communication_port) as loop:
 
-        storage = Storage(args.storage_path)
+        running = True
 
-        system_tasks.append(loop.create_task(storage.processor(queue)))
-        system_tasks.append(loop.create_task(storage.pruner()))
+        def timed_broadcast():
+            while running:
+                time.sleep(5)
+                packets = StatusMessage(get_ip(), get_load()).dump()
+                for packet in packets:
+                    client(args.communication_port, packet)
+
+        scheduler = Scheduler(storage, args.node_staleness)
+
+        async def timed_schedule():
+            while running:
+                time.sleep(60)
+                if not scheduler.check_cluster_state():
+                    logger.info("rebalanced cluster")
+
+        async def scheduled():
+            await loop.run_in_executor(pool, timed_broadcast)
+            await loop.run_in_executor(pool, timed_schedule)
+            await scheduler.check_jobs(datetime.utcnow())
+
+        loop.create_task(scheduled())
+
+        # logger.info("starting web server on http://{0}:{1}/".format(get_ip(), args.web_port))
+        # web_server = WebServer(args.web_port)
+        # web_server.start()
+
+        try:
+            loop.run_forever()
+        except:
+            logger.info("interrupt received")
+
+        # logger.info("stopping web server")
+        # web_server.stop()
+
+        running = False
 
         if args.storage_path:
-            logger.debug("got storage path {0}".format(args.storage_path))
-            system_tasks.append(loop.create_task(storage.auto_saver()))
+            loop.create_task(storage.save())
 
-        with Scheduler(loop, storage, args.node_staleness):
-
-            async def timed_broadcast():
-                while True:
-                    await asyncio.sleep(5)
-                    packets = StatusMessage(get_ip(), get_load()).dump()
-                    for packet in packets:
-                        client(args.communication_port, packet)
-
-            logger.info("creating timed UDP broadcast message")
-            system_tasks.append(loop.create_task(timed_broadcast()))
-
-            # logger.info("starting web server on http://{0}:{1}/".format(get_ip(), args.web_port))
-            # web_server = WebServer(args.web_port)
-            # web_server.start()
-
-            try:
-                loop.run_forever()
-            except:
-                logger.info("interrupt received")
-
-            # logger.info("stopping web server")
-            # web_server.stop()
-
-            logger.info("terminating")
-            for task in system_tasks:
-                task.cancel()
+        logger.debug("waiting for background tasks to finish")
+        pending_tasks = [task for task in asyncio.Task.all_tasks() if not task.done()]
+        loop.run_until_complete(asyncio.gather(*pending_tasks))
 
     logger.info("elvis has left the building")
 

@@ -24,7 +24,6 @@
 # SOFTWARE.
 
 import asyncio
-import selectors
 
 from dcron.datagram.client import client
 from dcron.datagram.server import StatusProtocolServer
@@ -40,9 +39,6 @@ async def send_packet(port, packets):
 
 def test_send_receive_broadcast():
     port = 12345
-    selector = selectors.SelectSelector()
-    loop = asyncio.SelectorEventLoop(selector)
-    asyncio.set_event_loop(loop)
 
     queue = asyncio.Queue()
     with StatusProtocolServer(queue, port) as loop:
@@ -62,32 +58,25 @@ def test_send_receive_broadcast():
 
             assert queue.qsize() == 1
 
-    loop.close()
-
 
 def test_send_receive_broadcast_to_storage():
     port = 12345
-    selector = selectors.SelectSelector()
-    loop = asyncio.SelectorEventLoop(selector)
-    asyncio.set_event_loop(loop)
 
-    queue = asyncio.Queue()
-    with StatusProtocolServer(queue, port) as loop:
-        with Storage(loop, queue) as storage:
+    storage = Storage()
 
-            async def packet_received():
-                while len(storage._cluster_status) == 0:
-                    await asyncio.sleep(0.1)
+    with StatusProtocolServer(storage, port) as loop:
 
-            assert len(storage._cluster_status) == 0
+        async def packet_received():
+            while len(storage._cluster_status) == 0:
+                await asyncio.sleep(0.1)
 
-            packets = list(StatusMessage('127.0.0.1', 0).dump())
+        assert len(storage._cluster_status) == 0
 
-            assert len(packets) == 1
-            assert len(packets[0]) == Packet.max_size
+        packets = list(StatusMessage('127.0.0.1', 0).dump())
 
-            loop.run_until_complete(asyncio.gather(*[packet_received(), send_packet(port, packets)]))
+        assert len(packets) == 1
+        assert len(packets[0]) == Packet.max_size
 
-            assert len(storage._cluster_status) == 1
+        loop.run_until_complete(asyncio.gather(*[packet_received(), send_packet(port, packets)]))
 
-    loop.close()
+        assert len(storage._cluster_status) == 1
