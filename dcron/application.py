@@ -48,8 +48,8 @@ logger = logging.getLogger('dcron')
 def main():
     parser = argparse.ArgumentParser(description='Distributed Cronlike Scheduler')
 
-    parser.add_argument('-l', '--log-file', default=None, help='path to store logfile (none means no logfile)')
-    parser.add_argument('-p', '--storage-path', default=None, help='directory where to store cache (none means /tmp)')
+    parser.add_argument('-l', '--log-file', default=None, help='path to store logfile')
+    parser.add_argument('-p', '--storage-path', default=None, help='directory where to store cache')
     parser.add_argument('-c', '--communication-port', type=int, default=12345, help='communication port')
     parser.add_argument('-w', '--web-port', type=int, default=8080, help='web hosting port')
     parser.add_argument('-n', '--ntp-server', default='pool.ntp.org', help='NTP server to detect clock skew')

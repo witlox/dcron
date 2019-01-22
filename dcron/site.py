@@ -57,7 +57,25 @@ class Site:
         return dict(nodes=self.storage.cluster_state(), jobs=self.storage.cron_jobs())
 
     async def add_job(self, request):
-        pass
+        data = await request.post()
+
+        if 'command' not in data or 'minute' not in data or 'hour' not in data or 'dayofmonth' not in data or 'month' not in data or 'dayofweek' not in data:
+            return web.Response(status=500, text='not all mandatory fields submitted via form')
+
+        new_job = CronJob(command=data['command'])
+        if not data['minute'] == '*':
+            new_job.minute = data['minute']
+        if not data['hour'] == '*':
+            new_job.minute = data['hour']
+        if not data['dayofmonth'] == '*':
+            new_job.minute = data['dayofmonth']
+        if not data['month'] == '*':
+            new_job.minute = data['month']
+        if not data['dayofweek'] == '*':
+            new_job.minute = data['dayofweek']
+        self.broadcast(new_job.dump())
+
+        raise web.HTTPFound('/')
 
     async def delete_job(self, request):
         pass

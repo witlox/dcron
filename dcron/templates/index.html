@@ -1,94 +1,123 @@
 {% extends 'base.html' %}
 
+{% block script %}
+<script type="text/javascript">
+    function formVisibility() {
+        let elem = document.getElementById("addcronform");
+        if (elem.style.display === "none") {
+            elem.style.display = "block";
+        } else {
+            elem.style.display = "none";
+        }
+    }
+</script>
+{% endblock %}
+
 {% block title %}
 dcron console
 {% endblock %}
 
 {% block content %}
-<p>overview of active nodes</p>
+<p></p>
 <table id="nodes" align="center">
     <thead>
         <tr>
-            <th>ip</th>
-            <th>last message</th>
-            <th>load (%)</th>
+            <th width="30%">ip</th>
+            <th width="30%">last message</th>
+            <th width="30%">load (%)</th>
         </tr>
     </thead>
     <tbody>
         {% for node in nodes%}
-        <tr>
-            <td>{{ node.ip }}</td>
-            <td>{{ node.time.strftime('%d.%m.%Y %H:%M:%S') }}</td>
-            <td>{{ "{:,.2f}".format(node.system_load) }}%</td>
+        {% if node.state == 'running' %}
+        <tr bgcolor="#90ee90">
+        {% elif node.state == 'disconnected' %}
+        <tr bgcolor="#90ee90">
+        {% else %}
+        <tr bgcolor="#cd5c5c">
+        {% endif %}
+            <td width="30%">{{ node.ip }}</td>
+            <td width="30%">{{ node.time.strftime('%d.%m.%Y %H:%M:%S') }}</td>
+            <td width="30%">{{ "{:,.2f}".format(node.system_load) }}%</td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
+<p>overview of active nodes</p>
 <br/><br/>
-<p>overview of active jobs</p>
 <table id="jobs" align="center">
     <thead>
         <tr>
-            <th>minute</th>
-            <th>hour</th>
-            <th>day of month</th>
-            <th>month</th>
-            <th>day_of_week</th>
-            <th>command</th>
-            <th>assigned to</th>
+            <th width="7%">minute</th>
+            <th width="7%">hour</th>
+            <th width="7%">day of month</th>
+            <th width="7%">month</th>
+            <th width="7%">day of week</th>
+            <th width="50%">command</th>
+            <th width="10%">assigned to</th>
+            <th width="5%"></th>
         </tr>
     </thead>
     <tbody>
         {% for job in jobs%}
+        {% if job.last_exit_code == 0 %}
+        <tr bgcolor="#90ee90">
+        {% else %}
+        <tr bgcolor="#90ee90">
+        {% endif %}
         <tr>
-            <td>{% if job.minute %}{{ job.minute }}{% else %} * {% endif %}</td>
-            <td>{% if job.hour %}{{ job.hour }}{% else %} * {% endif %}</td>
-            <td>{% if job.day_of_month %}{{ job.day_of_month }}{% else %} * {% endif %}</td>
-            <td>{% if job.month %}{{ job.month }}{% else %} * {% endif %}</td>
-            <td>{% if job.day_of_week %}{{ job.day_of_week }}{% else %} * {% endif %}</td>
-            <td>{% if job.command %}{{ job.command }}{% else %} * {% endif %}</td>
-            <td>{% if job.assigned_to %}{{ job.assigned_to.ip }}{% else %} * {% endif %}</td>
-            <td><button type="button">-</button></td>
+            <td width="7%">{% if job.minute %}{{ job.minute }}{% else %} * {% endif %}</td>
+            <td width="7%">{% if job.hour %}{{ job.hour }}{% else %} * {% endif %}</td>
+            <td width="7%">{% if job.day_of_month %}{{ job.day_of_month }}{% else %} * {% endif %}</td>
+            <td width="7%">{% if job.month %}{{ job.month }}{% else %} * {% endif %}</td>
+            <td width="7%">{% if job.day_of_week %}{{ job.day_of_week }}{% else %} * {% endif %}</td>
+            <td width="50%" align="left">{% if job.command %}{{ job.command }}{% else %} * {% endif %}</td>
+            <td width="10%">{% if job.assigned_to %}{{ job.assigned_to.ip }}{% else %} * {% endif %}</td>
+            <td width="5%"><button>-</button></td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
-<br/>
-<div align="center" id="addjob">
-    <button type="button" class="button">add cron job</button>
-</div>
-<div id="jobform">
-    <form action="#" method="get">
-        <table id="jobformtable">
-            <thead>
-                <tr>
-                    <th>minute</th>
-                    <th>hour</th>
-                    <th>day of month</th>
-                    <th>month</th>
-                    <th>day of week</th>
-                    <th>command</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><input type="text" name="minute" id="minute" value="*"/></td>
-                    <td><input type="text" name="hour" id="hour" value="*"/></td>
-                    <td><input type="text" name="day_of_month" id="day_of_month" value="*"/></td>
-                    <td><input type="text" name="month" id="month" value="*"/></td>
-                    <td><input type="text" name="day_of_week" id="day_of_week" value="*"/></td>
-                    <td><input type="text" name="command" id="command"/></td>
-                </tr>
-            </tbody>
+<p>overview of active jobs</p>
+<br/><br/>
+<div align="center">
+    <button id="addcron" onclick="formVisibility();">add cron job</button>
+    <br/>
+    <form id="addcronform" action="/job" method="post" name="addcronform" style="display:none" accept-charset="utf-8">
+        <table>
+            <tr>
+                <td><label for="minute">Minute</label></td>
+                <td><input id="minute" name="minute" value="*"/></td>
+            </tr>
+            <tr>
+                <td><label for="hour">Hour</label></td>
+                <td><input id="hour" name="hour" value="*"/></td>
+            </tr>
+            <tr>
+                <td><label for="dayofmonth">Day of month</label></td>
+                <td><input id="dayofmonth" name="dayofmonth" value="*"/></td>
+            </tr>
+            <tr>
+                <td><label for="month">Month</label></td>
+                <td><input id="month" name="month" value="*"/></td>
+            </tr>
+            <tr>
+                <td><label for="dayofweek">Day of week</label></td>
+                <td><input id="dayofweek" name="dayofweek" value="*"/></td>
+            </tr>
+            <tr>
+                <td><label for="command">Command</label></td>
+                <td><input id="command" name="command" /></td>
+            </tr>
         </table>
-        <div id="formbuttons" align="center">
-            <input type="submit" class="button" value="add"/>
-            <input type="submit" class="button" value="cancel"/>
+        <br/>
+         <div align="center">
+             <button id="addjob" type="submit" value="submit new job"></button>
         </div>
     </form>
 </div>
 {% endblock %}
 
 {% block footer %}
-<p>hideeho</p>
+<p>source available at <a href="https://github.com/witlox/dcron" target="_blank">github.com/witlox/dcron</a></p>
 {% endblock %}

@@ -39,6 +39,7 @@ class StatusMessage(Serializable):
         self.ip = ip
         self.time = datetime.utcnow()
         self.system_load = system_load
+        self.state = 'running'
 
     @staticmethod
     def load(data):

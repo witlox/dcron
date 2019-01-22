@@ -12,15 +12,17 @@
     <script src="{{ url('static', filename='js/bootstrap.min.css') }}"></script>
     {% block head %}
     {% endblock %}
+    {% block script %}
+    {% endblock %}
 </head>
+<body>
 <h1>welcome to the distributed cronlike scheduler</h1>
 <h2>for more information visit: </h2>
-<body>
     {% block content%}
     {% endblock %}
-</body>
 <footer>
     {% block footer %}
     {% endblock %}
 </footer>
+</body>
 </html>

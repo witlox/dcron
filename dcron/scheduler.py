@@ -65,6 +65,9 @@ class Scheduler:
         for node in self.storage.cluster_state():
             if datetime.utcnow() - node.time < timedelta(seconds=self.staleness):
                 yield node
+            else:
+                node.state = 'disconnected'
+                self.storage.put_nowait(node)
 
     async def check_jobs(self, now):
         """
