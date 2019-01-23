@@ -32,7 +32,8 @@ from os.path import join, exists
 import aiofiles
 
 from dcron.protocols import Packet, group
-from dcron.protocols.cronjob import CronJob
+from dcron.protocols.cronjob import CronJob, RemoveCronJob
+from dcron.protocols.rebalance import Rebalance
 from dcron.protocols.status import StatusMessage
 
 
@@ -83,6 +84,10 @@ class Storage:
         logging.debug("got {0} on processor queue".format(data))
         packet = Packet.decode(data)
         if packet:
+            def clean_buffer(i, g):
+                self.logger.debug("removing message {0} from buffer".format(i))
+                for p in g[i]:
+                    self._buffer.remove(p)
             self._buffer.append(packet)
             packet_groups = group(self._buffer)
             for uuid in packet_groups.keys():
@@ -93,17 +98,36 @@ class Storage:
                     if status_message.ip not in self._cluster_status.keys():
                         self._cluster_status[status_message.ip] = []
                     self._cluster_status[status_message.ip].append(status_message)
-                    for packet in packet_groups[uuid]:
-                        self.logger.debug("removing status message {0} from buffer".format(uuid))
-                        self._buffer.remove(packet)
+                    clean_buffer(uuid, packet_groups)
+                elif Rebalance.load(packet_groups[uuid]):
+                    self.logger.info("rebalance received")
+                    self._cluster_jobs.clear()
+                    clean_buffer(uuid, packet_groups)
+                elif RemoveCronJob.load(packet_groups[uuid]):
+                    details = RemoveCronJob.load(packet_groups[uuid])
+                    remove_cron_job = CronJob(minute=details.minute,
+                                              hour=details.hour,
+                                              day_of_month=details.day_of_month,
+                                              month=details.month,
+                                              day_of_week=details.day_of_week,
+                                              command=details.command)
+                    self.logger.debug("got full removecronjob in buffer ({0}".format(remove_cron_job))
+                    if remove_cron_job in self._cluster_jobs:
+                        self._cluster_jobs.remove(remove_cron_job)
+                    clean_buffer(uuid, packet_groups)
                 elif CronJob.load(packet_groups[uuid]):
                     cron_job = CronJob.load(packet_groups[uuid])
                     self.logger.debug("got full cronjob in buffer ({0}".format(cron_job))
                     if cron_job not in self._cluster_jobs:
                         self._cluster_jobs.append(cron_job)
-                    for packet in packet_groups[uuid]:
-                        self.logger.debug("removing status message {0} from buffer".format(uuid))
-                        self._buffer.remove(packet)
+                    else:
+                        for job in self._cluster_jobs:
+                            if job == cron_job and (job.last_exit_code != cron_job.last_exit_code or job.last_std_out != cron_job.last_std_out or job.last_std_err != cron_job.last_std_err):
+                                self.logger.debug("job contents updated for {0}".format(job.command))
+                                job.last_exit_code = cron_job.last_exit_code
+                                job.last_std_out = cron_job.last_std_out
+                                job.last_std_err = cron_job.last_std_err
+                    clean_buffer(uuid, packet_groups)
         if len(self._cluster_status.values()) >= 10000000:
             self.logger.debug("pruning memory")
             for ip in self._cluster_status.keys():

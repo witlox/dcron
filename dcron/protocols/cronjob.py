@@ -112,3 +112,13 @@ class CronJob(Serializable):
             if not self.day_of_week == now.day_of_week:
                 return False
         return True
+
+
+class RemoveCronJob(CronJob):
+
+    @staticmethod
+    def load(data):
+        obj = Serializable.load(data)
+        if isinstance(obj, RemoveCronJob):
+            return obj
+        return None

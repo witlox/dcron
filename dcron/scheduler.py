@@ -30,6 +30,8 @@ from datetime import timedelta, datetime
 from itertools import combinations
 from random import randint
 
+from dcron.utils import get_ip
+
 
 def node_pick(node_count, pick_count):
     result = ()
@@ -75,7 +77,7 @@ class Scheduler:
         :param now: current date time
         """
         for job in self.storage.cron_jobs():
-            if job.should_run_now(now):
+            if job.should_run_now(now) and job.assigned_to == get_ip():
                 self.logger.info("going to execute timed job: {0}".format(job.command))
                 job.last_exit_code, job.last_std_out, job.last_std_err = await run_async(job.command)
 

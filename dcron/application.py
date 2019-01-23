@@ -35,6 +35,7 @@ from aiohttp.web_runner import AppRunner, TCPSite
 
 from dcron.datagram.client import client
 from dcron.datagram.server import StatusProtocolServer
+from dcron.protocols.rebalance import Rebalance
 from dcron.protocols.status import StatusMessage
 from dcron.scheduler import Scheduler
 from dcron.site import Site
@@ -84,6 +85,9 @@ def main():
                 packets = StatusMessage(get_ip(), get_load()).dump()
                 for packet in packets:
                     client(args.communication_port, packet)
+                for job in storage.cron_jobs():
+                    for packet in job.dump():
+                        client(args.communication_port, packet)
 
         scheduler = Scheduler(storage, args.node_staleness)
 
@@ -92,6 +96,12 @@ def main():
                 time.sleep(60)
                 if not scheduler.check_cluster_state():
                     logger.info("rebalanced cluster")
+                    jobs = storage.cron_jobs().copy()
+                    for packet in Rebalance().dump():
+                        client(args.communication_port, packet)
+                    for job in jobs:
+                        for packet in job.dump():
+                            client(args.communication_port, packet)
 
         async def scheduled():
             await loop.run_in_executor(pool, timed_broadcast)

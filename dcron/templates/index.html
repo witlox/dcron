@@ -18,67 +18,10 @@ dcron console
 {% endblock %}
 
 {% block content %}
-<p></p>
-<table id="nodes" align="center">
-    <thead>
-        <tr>
-            <th width="30%">ip</th>
-            <th width="30%">last message</th>
-            <th width="30%">load (%)</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for node in nodes%}
-        {% if node.state == 'running' %}
-        <tr bgcolor="#90ee90">
-        {% elif node.state == 'disconnected' %}
-        <tr bgcolor="#90ee90">
-        {% else %}
-        <tr bgcolor="#cd5c5c">
-        {% endif %}
-            <td width="30%">{{ node.ip }}</td>
-            <td width="30%">{{ node.time.strftime('%d.%m.%Y %H:%M:%S') }}</td>
-            <td width="30%">{{ "{:,.2f}".format(node.system_load) }}%</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-<p>overview of active nodes</p>
+
+{% include 'nodetable.html' %}
 <br/><br/>
-<table id="jobs" align="center">
-    <thead>
-        <tr>
-            <th width="7%">minute</th>
-            <th width="7%">hour</th>
-            <th width="7%">day of month</th>
-            <th width="7%">month</th>
-            <th width="7%">day of week</th>
-            <th width="50%">command</th>
-            <th width="10%">assigned to</th>
-            <th width="5%"></th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for job in jobs%}
-        {% if job.last_exit_code == 0 %}
-        <tr bgcolor="#90ee90">
-        {% else %}
-        <tr bgcolor="#90ee90">
-        {% endif %}
-        <tr>
-            <td width="7%">{% if job.minute %}{{ job.minute }}{% else %} * {% endif %}</td>
-            <td width="7%">{% if job.hour %}{{ job.hour }}{% else %} * {% endif %}</td>
-            <td width="7%">{% if job.day_of_month %}{{ job.day_of_month }}{% else %} * {% endif %}</td>
-            <td width="7%">{% if job.month %}{{ job.month }}{% else %} * {% endif %}</td>
-            <td width="7%">{% if job.day_of_week %}{{ job.day_of_week }}{% else %} * {% endif %}</td>
-            <td width="50%" align="left">{% if job.command %}{{ job.command }}{% else %} * {% endif %}</td>
-            <td width="10%">{% if job.assigned_to %}{{ job.assigned_to.ip }}{% else %} * {% endif %}</td>
-            <td width="5%"><button>-</button></td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-<p>overview of active jobs</p>
+{% include 'jobstable.html' %}
 <br/><br/>
 <div align="center">
     <button id="addcron" onclick="formVisibility();">add cron job</button>
@@ -112,7 +55,7 @@ dcron console
         </table>
         <br/>
          <div align="center">
-             <button id="addjob" type="submit" value="submit new job"></button>
+             <button id="addjob" type="submit">submit new job</button>
         </div>
     </form>
 </div>

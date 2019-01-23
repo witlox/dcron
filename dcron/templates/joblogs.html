@@ -1,0 +1,17 @@
+<p>Job details for {{ job.command }} on {{ job.assigned_to }}</p>
+<table id="joblogtable">
+    <thead>
+    <tr>
+        <th width="49%">stdout</th>
+        <th width="49%">stderr</th>
+        <th width="2%">exit</th>
+    </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td width="49%">{{ job.last_std_out }}</td>
+            <td width="49%">{{ job.last_std_err }}</td>
+            <td width="2%">{{ job.last_exit_code }}</td>
+        </tr>
+    </tbody>
+</table>
