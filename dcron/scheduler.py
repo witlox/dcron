@@ -69,7 +69,7 @@ class Scheduler:
                 yield node
             else:
                 node.state = 'disconnected'
-                self.storage.put(node)
+                self.storage.put_nowait(node)
 
     async def check_jobs(self, now):
         """
@@ -124,6 +124,6 @@ class Scheduler:
 
         for job in jobs:
             if not job.is_assigned():
-                draw = node_pick(len(nodes), 1)[0]
+                draw = node_pick(len(nodes) - 1, 1)[0]
                 self.logger.info("assigning jobs {0} to node {1}".format(job, nodes[draw]))
                 job.assign(nodes[draw])

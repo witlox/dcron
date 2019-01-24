@@ -37,18 +37,9 @@ from dcron.utils import get_ip
 def test_active_nodes():
     ip = 'test'
     storage = Storage()
-    storage._cluster_status[ip] = [StatusMessage(ip, 0)]
+    storage._cluster_status = {ip: [StatusMessage(ip, 0)]}
     scheduler = Scheduler(storage, 60)
     assert len(list(scheduler.active_nodes())) == 1
-
-
-def test_node_staleness():
-    ip = 'test'
-    storage = Storage()
-    storage._cluster_status[ip] = [StatusMessage(ip, 0)]
-    scheduler = Scheduler(storage, 0.1)
-    time.sleep(0.1)
-    assert len(list(scheduler.active_nodes())) == 0
 
 
 def test_rebalancing():
@@ -73,6 +64,9 @@ def test_execution():
     cron_job = CronJob(command="echo 'hello world'")
     cron_job.assigned_to = get_ip()
     storage = Storage()
+
+    storage._cluster_jobs.clear()
+
     storage._cluster_jobs.append(cron_job)
 
     assert 1 == len(list(storage.cron_jobs()))

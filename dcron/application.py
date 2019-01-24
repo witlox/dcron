@@ -51,10 +51,10 @@ def main():
 
     parser.add_argument('-l', '--log-file', default=None, help='path to store logfile')
     parser.add_argument('-p', '--storage-path', default=None, help='directory where to store cache')
-    parser.add_argument('-c', '--communication-port', type=int, default=12345, help='communication port')
-    parser.add_argument('-w', '--web-port', type=int, default=8080, help='web hosting port')
-    parser.add_argument('-n', '--ntp-server', default='pool.ntp.org', help='NTP server to detect clock skew')
-    parser.add_argument('-s', '--node-staleness', type=int, default=180, help='Time in seconds of non-communication for a node to be marked as stale')
+    parser.add_argument('-c', '--communication-port', type=int, default=12345, help='communication port (default: 12345)')
+    parser.add_argument('-w', '--web-port', type=int, default=8080, help='web hosting port (default: 8080)')
+    parser.add_argument('-n', '--ntp-server', default='pool.ntp.org', help='NTP server to detect clock skew (default: pool.ntp.org)')
+    parser.add_argument('-s', '--node-staleness', type=int, default=180, help='Time in seconds of non-communication for a node to be marked as stale (defailt: 180s)')
     parser.add_argument('-v', '--verbose', action='store_true', default=False, help='verbose logging')
 
     args = parser.parse_args()

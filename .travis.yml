@@ -1,0 +1,13 @@
+language: python
+python:
+- '3.7'
+install:
+- pip install .
+script:
+- python -m pytest tests/
+deploy:
+  provider: pypi
+  user: witlox
+  password:
+    secure: wr01sARTFPruJ1of+WylMyb99V9qe1Cxw1YpiHrpAfHknCED4YP/Pkeb1IIgCRfWbvWD3SS77Ulx/+G4iQrDLWnbBQIj6K0c3K2YK6ilWUIW1fKWXWty5k8GTD/5YCDiPbZsBjiMO8HhSz5YFdxQmANF+GNMRbSovwqKhjASP8EcpP2HWhpQP8z4Pro/thHKBafyZszzU0vq6dVMuk9tdmiMGOmoakHAQJ4JjSdjkj/6N7b+mNCXlwROgkAL/3K0YZ73+g+CpiSTOT9G2Q6r8qzSE5wi5MgkwYzNNrnmMrx38zxBjyT06GcS6pTdropAS6T8/cHd8bxufTDMfhtz7LV42c+LDoWnmzJut1hCEre9eXF+/YMl1vfqNZQUig/JPMHkPSQxanNDESvpchaFi+JuKFJW/LIAv/LNpYdIYFTRbq6Ytdw8mGn4Qy3uibwMZB5ZqFpZk2/7ZeBh/ym5EzAx8PS7fWbsEdvKF3nd45sAkYanrS9yfugjwmarh+ia24Bk63Yyvx7hVolorhyE17rxG/lQ/6StqCnSJUJwZaWV+FzKnBYQQdHaRMYG7ytyIajziXBrOWXZHTLrUUXjB/24OKheR5CDEeBb2rKn6h2+mJy0sZoDWFnvYe8E4Bjy9/eEtIJebZkg3n3hkYBkJoe95dNAho3PzJFsvv0e/1g=
+  skip_existing: true
