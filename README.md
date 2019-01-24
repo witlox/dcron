@@ -1,4 +1,4 @@
-#Distributed Cronlike Scheduler
+#Distributed Cronlike Scheduler [![Build Status](https://travis-ci.org/witlox/dcron.svg?branch=master)](https://travis-ci.org/witlox/dcron)
 
 The aim of dcron is to offer [cron](https://en.wikipedia.org/wiki/Cron) like behaviour spanning multiple machines. 
 The system offers a web interface to manage your jobs, and reports the health of the cluster. 
