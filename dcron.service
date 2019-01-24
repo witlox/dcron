@@ -1,0 +1,12 @@
+[Unit]
+Description=dcron Service
+After=network.target
+
+[Service]
+Type=forking
+#User=ubuntu
+ExecStart=dcron -l /var/log/dcron.log -p /tmp
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
