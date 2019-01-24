@@ -29,10 +29,9 @@ Configure ssl:
 
 .. code-block::
 
+  a2enmod proxy
   a2enmod ssl
   a2ensite default-ssl.conf
-  openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/apache.key -out /etc/ssl/certs/apache.crt
-  systemctl daemon-reload
   systemctl restart apache2
 
 Edit /etc/apache2/sites-available/default-ssl.conf
@@ -47,8 +46,8 @@ Edit /etc/apache2/sites-available/default-ssl.conf
                 ErrorLog ${APACHE_LOG_DIR}/error.log
                 CustomLog ${APACHE_LOG_DIR}/access.log combined
                 SSLEngine on
-                SSLCertificateFile /etc/ssl/certs/apache.crt
-                SSLCertificateKeyFile /etc/ssl/private/apache.key
+                SSLCertificateFile /etc/ssl/certs/ssl-cert-snakeoil.pem
+                SSLCertificateKeyFile /etc/ssl/private/ssl-cert-snakeoil.key
 
                 <FilesMatch "\.(cgi|shtml|phtml|php)$">
                                 SSLOptions +StdEnvVars
