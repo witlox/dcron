@@ -4,7 +4,7 @@ The aim of dcron is to offer [cron](https://en.wikipedia.org/wiki/Cron) like beh
 The system offers a web interface to manage your jobs, and reports the health of the cluster. 
 Everything is self contained, so you only need to start the system to have a working setup. 
 We do however recommend that you run the system behind a reverse proxy, since there is no authentication mechanism.
-Please check the [docs]() regarding installation, configuration and options.  
+Please check the [docs](https://dcron.readthedocs.io) regarding installation, configuration and options.  
 
 ## Details
 
