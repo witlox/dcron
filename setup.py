@@ -31,7 +31,7 @@ from setuptools import setup
 
 version = "0.1"
 
-requirements = ['aiohttp', 'aiofiles', 'aiohttp_jinja2']
+requirements = ['aiohttp', 'aiofiles', 'aiohttp_jinja2', 'ntplib']
 
 test_requirements = ['pytest', 'tox']
 
