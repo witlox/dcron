@@ -25,83 +25,77 @@ Our system doesn't do any authentication, so we will configure apache2 as a reve
 
 Install apache2: `apt install apache2`
 
-Configure ssl:
+Configure apach2 modules::
 
-.. code-block::
+    a2enmod proxy
+    a2enmod ssl
+    a2ensite default-ssl.conf
+    systemctl restart apache2
 
-  a2enmod proxy
-  a2enmod ssl
-  a2ensite default-ssl.conf
-  systemctl restart apache2
+Edit /etc/apache2/sites-available/default-ssl.conf::
 
-Edit /etc/apache2/sites-available/default-ssl.conf
+    <IfModule mod_ssl.c>
+       <VirtualHost _default_:443>
+               ServerAdmin [email protected]
+               ServerName localhost
+               DocumentRoot /var/www/html
+               ErrorLog ${APACHE_LOG_DIR}/error.log
+               CustomLog ${APACHE_LOG_DIR}/access.log combined
+               SSLEngine on
+               SSLCertificateFile /etc/ssl/certs/ssl-cert-snakeoil.pem
+               SSLCertificateKeyFile /etc/ssl/private/ssl-cert-snakeoil.key
 
-.. code-block::
+               <FilesMatch "\.(cgi|shtml|phtml|php)$">
+                               SSLOptions +StdEnvVars
+               </FilesMatch>
+               <Directory /usr/lib/cgi-bin>
+                               SSLOptions +StdEnvVars
+               </Directory>
+               BrowserMatch "MSIE [2-6]" \
+                               nokeepalive ssl-unclean-shutdown \
+                               downgrade-1.0 force-response-1.0
+               BrowserMatch "MSIE [17-9]" ssl-unclean-shutdown
+               Alias /myservice/ /var/www/myservice/
 
-  <IfModule mod_ssl.c>
-        <VirtualHost _default_:443>
-                ServerAdmin [email protected]
-                ServerName localhost
-                DocumentRoot /var/www/html
-                ErrorLog ${APACHE_LOG_DIR}/error.log
-                CustomLog ${APACHE_LOG_DIR}/access.log combined
-                SSLEngine on
-                SSLCertificateFile /etc/ssl/certs/ssl-cert-snakeoil.pem
-                SSLCertificateKeyFile /etc/ssl/private/ssl-cert-snakeoil.key
+               ProxyRequests On
+               ProxyPreserveHost On
 
-                <FilesMatch "\.(cgi|shtml|phtml|php)$">
-                                SSLOptions +StdEnvVars
-                </FilesMatch>
-                <Directory /usr/lib/cgi-bin>
-                                SSLOptions +StdEnvVars
-                </Directory>
-                BrowserMatch "MSIE [2-6]" \
-                                nokeepalive ssl-unclean-shutdown \
-                                downgrade-1.0 force-response-1.0
-                BrowserMatch "MSIE [17-9]" ssl-unclean-shutdown
-                Alias /myservice/ /var/www/myservice/
-
-                ProxyRequests On
-                ProxyPreserveHost On
-
-                <Proxy />
-                    Order deny,allow
-                    Allow from all
-                </Proxy>
+               <Proxy />
+                   Order deny,allow
+                   Allow from all
+               </Proxy>
 
 
-                <Location />
-                  Order deny,allow
-                  Allow from all
+               <Location />
+                 Order deny,allow
+                 Allow from all
 
-                  ProxyPass http://localhost:8080
-                  ProxyPassReverse http://localhost:8080
+                 ProxyPass http://localhost:8080
+                 ProxyPassReverse http://localhost:8080
 
-                  AuthType Basic
-                  AuthName "dcron"
-                  AuthBasicProvider file
-                  AuthUserFile /etc/apache2/.htpasswd
+                 AuthType Basic
+                 AuthName "dcron"
+                 AuthBasicProvider file
+                 AuthUserFile /etc/apache2/.htpasswd
 
-                  Require valid-user
-                </Location>
-          </VirtualHost>
-  </IfModule>
+                 Require valid-user
+               </Location>
+         </VirtualHost>
+    </IfModule>
 
-Edit /etc/apache2/sites-available/000-default.conf
+Edit /etc/apache2/sites-available/000-default.conf::
 
-.. code-block::
+    <VirtualHost *:80>
+       #ServerName www.example.com
 
-  <VirtualHost *:80>
-        #ServerName www.example.com
+       ServerAdmin webmaster@localhost
+       DocumentRoot /var/www/html
 
-        ServerAdmin webmaster@localhost
-        DocumentRoot /var/www/html
+       ErrorLog ${APACHE_LOG_DIR}/error.log
+       CustomLog ${APACHE_LOG_DIR}/access.log combined
 
-        ErrorLog ${APACHE_LOG_DIR}/error.log
-        CustomLog ${APACHE_LOG_DIR}/access.log combined
-
-        Redirect / https://external.machine.address
-  </VirtualHost>
+       Redirect / https://external.machine.address
+    </VirtualHost>
 
 For every user you want to give access, run the following command:
 
