@@ -1,90 +1,35 @@
-<script>
-    $(document).ready(function() {
-        let updateJobsTable = function() {
-            $('#jobstable').load('/jobs');
-        };
-        setInterval(updateJobsTable, 2000);
-    });
-    function logVisibility() {
-        let elem = document.getElementById("joblogdiv");
-        if (elem.style.display === "none") {
-            elem.style.display = "block";
-        } else {
-            elem.style.display = "none";
-        }
-    }
-    function jobLog(elem) {
-        let kve = $(elem).data("cmd").split(',');
-        let request_data = {};
-        for (let i = 0; i < kve.length; i++) {
-            request_data[kve[i].split(':')[0]] = kve[i].split(':')[1];
-        }
-        $.ajax({
-            url: '/joblog',
-            data: request_data,
-            type: 'POST',
-            success: function (result) {
-                console.log(result);
-                $('#joblog').html(result);
-                logVisibility();
-            }
-        });
-    }
-    function removeJob(elem) {
-        let kve = $(elem).data("cmd").split(',');
-        let request_data = {};
-        for (let i = 0; i < kve.length; i++) {
-            request_data[kve[i].split(':')[0]] = kve[i].split(':')[1];
-        }
-        $.ajax({
-            url: '/remove_job',
-            data: request_data,
-            type: 'POST',
-            success: function (result) {
-                console.log(result);
-            }
-        });
-    }
-</script>
-<div id="jobstable">
-    <table id="jobs" align="center">
-        <thead>
-            <tr>
-                <th width="7%">minute</th>
-                <th width="7%">hour</th>
-                <th width="7%">day of month</th>
-                <th width="7%">month</th>
-                <th width="7%">day of week</th>
-                <th width="50%">command</th>
-                <th width="10%">assigned to</th>
-                <th width="3%"></th>
-                <th width="3%"></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for job in jobs%}
-            {% if job.last_exit_code == 0 %}
-            <tr bgcolor="#90ee90">
-            {% else %}
-            <tr bgcolor="#90ee90">
-            {% endif %}
-            <tr>
-                <td width="7%">{% if job.minute %}{{ job.minute }}{% else %} * {% endif %}</td>
-                <td width="7%">{% if job.hour %}{{ job.hour }}{% else %} * {% endif %}</td>
-                <td width="7%">{% if job.day_of_month %}{{ job.day_of_month }}{% else %} * {% endif %}</td>
-                <td width="7%">{% if job.month %}{{ job.month }}{% else %} * {% endif %}</td>
-                <td width="7%">{% if job.day_of_week %}{{ job.day_of_week }}{% else %} * {% endif %}</td>
-                <td width="50%" align="left">{% if job.command %}{{ job.command }}{% else %} * {% endif %}</td>
-                <td width="10%">{% if job.assigned_to %}{{ job.assigned_to.ip }}{% else %} * {% endif %}</td>
-                <td width="5%"><button type="button" onclick="jobLog(this);" data-cmd="minute:{{ job.minute }},hour:{{job.hour}},dayofmonth:{{ job.day_of_month }},month:{{ job.month }},dayofweek:{{ job.day_of_week }},command:{{ job.command }}">?</button></td>
-                <td width="5%"><button type="button" onclick="removeJob(this);" data-cmd="minute:{{ job.minute }},hour:{{job.hour}},dayofmonth:{{ job.day_of_month }},month:{{ job.month }},dayofweek:{{ job.day_of_week }},command:{{ job.command }}">-</button></td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-<div align="center" style="display:none" id="joblogdiv">
-    <div id="joblog"></div>
-    <button id="hidejoblog" onclick="logVisibility();">close log</button>
-</div>
-<p>overview of active jobs</p>
+<table id="jobs" align="center">
+    <thead>
+        <tr>
+            <th width="7%">minute</th>
+            <th width="7%">hour</th>
+            <th width="7%">day of month</th>
+            <th width="7%">month</th>
+            <th width="7%">day of week</th>
+            <th width="50%">command</th>
+            <th width="10%">assigned to</th>
+            <th width="3%"></th>
+            <th width="3%"></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for job in jobs%}
+        {% if job.last_exit_code == 0 %}
+        <tr bgcolor="#90ee90">
+        {% else %}
+        <tr bgcolor="#90ee90">
+        {% endif %}
+        <tr>
+            <td width="7%">{% if job.minute %}{{ job.minute }}{% else %} * {% endif %}</td>
+            <td width="7%">{% if job.hour %}{{ job.hour }}{% else %} * {% endif %}</td>
+            <td width="7%">{% if job.day_of_month %}{{ job.day_of_month }}{% else %} * {% endif %}</td>
+            <td width="7%">{% if job.month %}{{ job.month }}{% else %} * {% endif %}</td>
+            <td width="7%">{% if job.day_of_week %}{{ job.day_of_week }}{% else %} * {% endif %}</td>
+            <td width="50%" align="left">{% if job.command %}{{ job.command }}{% else %} * {% endif %}</td>
+            <td width="10%">{% if job.assigned_to %}{{ job.assigned_to.ip }}{% else %} * {% endif %}</td>
+            <td width="5%"><button type="button" onclick="jobLog(this);" data-cmd="minute:{{ job.minute }},hour:{{job.hour}},dayofmonth:{{ job.day_of_month }},month:{{ job.month }},dayofweek:{{ job.day_of_week }},command:{{ job.command }}">?</button></td>
+            <td width="5%"><button type="button" onclick="removeJob(this);" data-cmd="minute:{{ job.minute }},hour:{{job.hour}},dayofmonth:{{ job.day_of_month }},month:{{ job.month }},dayofweek:{{ job.day_of_week }},command:{{ job.command }}">-</button></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

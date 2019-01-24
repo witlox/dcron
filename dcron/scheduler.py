@@ -69,13 +69,14 @@ class Scheduler:
                 yield node
             else:
                 node.state = 'disconnected'
-                self.storage.put_nowait(node)
+                self.storage.put(node)
 
     async def check_jobs(self, now):
         """
         check if you have to start a CronJob
         :param now: current date time
         """
+        self.logger.debug("checking if jobs need executing")
         for job in self.storage.cron_jobs():
             if job.should_run_now(now) and job.assigned_to == get_ip():
                 self.logger.info("going to execute timed job: {0}".format(job.command))

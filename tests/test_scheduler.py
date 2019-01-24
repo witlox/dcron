@@ -25,11 +25,13 @@
 
 import asyncio
 import time
+from datetime import datetime
 
 from dcron.protocols.cronjob import CronJob
 from dcron.protocols.status import StatusMessage
 from dcron.scheduler import Scheduler
 from dcron.storage import Storage
+from dcron.utils import get_ip
 
 
 def test_active_nodes():
@@ -64,3 +66,26 @@ def test_rebalancing():
     assert scheduler.check_cluster_state()
 
 
+def test_execution():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    cron_job = CronJob(command="echo 'hello world'")
+    cron_job.assigned_to = get_ip()
+    storage = Storage()
+    storage._cluster_jobs.append(cron_job)
+
+    assert 1 == len(list(storage.cron_jobs()))
+
+    scheduler = Scheduler(storage, 180)
+
+    loop.run_until_complete(scheduler.check_jobs(datetime.utcnow()))
+
+    assert 1 == len(list(storage.cron_jobs()))
+
+    cron_job = list(storage.cron_jobs())[0]
+
+    assert 0 == cron_job.last_exit_code
+    assert b'hello world\n' == cron_job.last_std_out
+
+    loop.close()

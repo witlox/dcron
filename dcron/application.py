@@ -70,14 +70,17 @@ def main():
         root_logger.setLevel(logging.DEBUG)
     else:
         root_logger.setLevel(logging.INFO)
+        logging.getLogger('aiohttp').setLevel(logging.WARNING)
 
-    pool = ThreadPoolExecutor(2)
+    pool = ThreadPoolExecutor(4)
 
     storage = Storage(args.storage_path)
 
     with StatusProtocolServer(storage, args.communication_port) as loop:
 
         running = True
+
+        scheduler = Scheduler(storage, args.node_staleness)
 
         def timed_broadcast():
             while running:
@@ -88,8 +91,6 @@ def main():
                 for job in storage.cron_jobs():
                     for packet in job.dump():
                         client(args.communication_port, packet)
-
-        scheduler = Scheduler(storage, args.node_staleness)
 
         def timed_schedule():
             while running:
@@ -103,12 +104,20 @@ def main():
                         for packet in job.dump():
                             client(args.communication_port, packet)
 
-        async def scheduled():
+        async def scheduled_broadcast():
             await loop.run_in_executor(pool, timed_broadcast)
-            await loop.run_in_executor(pool, timed_schedule)
-            await scheduler.check_jobs(datetime.utcnow())
 
-        loop.create_task(scheduled())
+        async def scheduled_rebalance():
+            await loop.run_in_executor(pool, timed_schedule)
+
+        async def scheduled_schedule():
+            while running:
+                await scheduler.check_jobs(datetime.utcnow())
+                await asyncio.sleep(15)
+
+        loop.create_task(scheduled_broadcast())
+        loop.create_task(scheduled_rebalance())
+        loop.create_task(scheduled_schedule())
 
         logger.info("starting web application server on http://{0}:{1}/".format(get_ip(), args.web_port))
 

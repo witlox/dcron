@@ -59,7 +59,7 @@ class Site:
     async def get(self, request):
         return
 
-    @aiohttp_jinja2.template('nodetable.html')
+    @aiohttp_jinja2.template('nodestable.html')
     async def get_nodes(self, request):
         return dict(nodes=self.storage.cluster_state())
 
