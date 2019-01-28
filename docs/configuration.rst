@@ -9,6 +9,25 @@ You may however want to run a more 'robust' setup then simply starting the appli
 In order to do so, we will use systemd for starting our application and use apache2 as a reverse proxy.
 We recommend not running this system on a broad subnet, because it is broadcasting over UDP, use a private subnet for the nodes if possible.
 
+python3.7 on Ubuntu 18
+======================
+Install python 3.7 on Ubuntu from the deadsnakes ppa::
+
+    apt install software-properties-common
+    add-apt-repository ppa:deadsnakes/ppa
+    apt install python3.7
+    update-alternatives --install /usr/bin/python python /usr/bin/python2.7 1
+    update-alternatives --install /usr/bin/python python /usr/bin/python3.6 2
+    update-alternatives --install /usr/bin/python python /usr/bin/python3.7 3
+
+Now run `update-alternatives --config python` and select 3.7 as the default interpreter.
+You need to install pip, so run::
+
+    curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+    python get-pip.py
+
+You should now be able to install dcron from pip.
+
 systemd
 =======
 
@@ -55,7 +74,6 @@ Edit /etc/apache2/sites-available/default-ssl.conf::
                                nokeepalive ssl-unclean-shutdown \
                                downgrade-1.0 force-response-1.0
                BrowserMatch "MSIE [17-9]" ssl-unclean-shutdown
-               Alias /myservice/ /var/www/myservice/
 
                ProxyRequests On
                ProxyPreserveHost On
