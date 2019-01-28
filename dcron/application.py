@@ -113,7 +113,7 @@ def main():
         async def scheduled_schedule():
             while running:
                 await scheduler.check_jobs(datetime.utcnow())
-                await asyncio.sleep(15)
+                await asyncio.sleep(60)
 
         loop.create_task(scheduled_broadcast())
         loop.create_task(scheduled_rebalance())
