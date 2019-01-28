@@ -3,9 +3,9 @@ Description=dcron Service
 After=network.target
 
 [Service]
-Type=forking
+Type=simple
 #User=ubuntu
-ExecStart=dcron -l /var/log/dcron.log -p /tmp
+ExecStart=/usr/local/bin/dcron -l /var/log/dcron.log -p /tmp
 Restart=on-failure
 
 [Install]

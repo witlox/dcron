@@ -48,6 +48,7 @@ Configure apach2 modules::
 
     a2enmod proxy
     a2enmod ssl
+    a2enmod proxy_http
     a2ensite default-ssl.conf
     systemctl restart apache2
 
@@ -55,11 +56,12 @@ Edit /etc/apache2/sites-available/default-ssl.conf::
 
     <IfModule mod_ssl.c>
        <VirtualHost _default_:443>
-               ServerAdmin [email protected]
-               ServerName localhost
-               DocumentRoot /var/www/html
+               #ServerAdmin admin@example.com
+               #ServerName www.example.com
+
                ErrorLog ${APACHE_LOG_DIR}/error.log
                CustomLog ${APACHE_LOG_DIR}/access.log combined
+
                SSLEngine on
                SSLCertificateFile /etc/ssl/certs/ssl-cert-snakeoil.pem
                SSLCertificateKeyFile /etc/ssl/private/ssl-cert-snakeoil.key
@@ -88,8 +90,8 @@ Edit /etc/apache2/sites-available/default-ssl.conf::
                  Order deny,allow
                  Allow from all
 
-                 ProxyPass http://localhost:8080
-                 ProxyPassReverse http://localhost:8080
+                 ProxyPass http://localhost:8080/
+                 ProxyPassReverse http://localhost:8080/
 
                  AuthType Basic
                  AuthName "dcron"
@@ -107,7 +109,6 @@ Edit /etc/apache2/sites-available/000-default.conf::
        #ServerName www.example.com
 
        ServerAdmin webmaster@localhost
-       DocumentRoot /var/www/html
 
        ErrorLog ${APACHE_LOG_DIR}/error.log
        CustomLog ${APACHE_LOG_DIR}/access.log combined
