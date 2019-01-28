@@ -29,7 +29,7 @@ import sys
 
 from setuptools import setup
 
-version = "0.2"
+version = "0.3"
 
 requirements = ['aiohttp', 'aiofiles', 'aiohttp_jinja2', 'ntplib']
 
@@ -68,7 +68,15 @@ setup(name="dcron",
               "dcron = dcron.application:main",
           ]
       },
-      packages=["dcron"],
+      packages=[
+          "dcron",
+          "dcron.datagram",
+          "dcron.protocols",
+          "dcron.static",
+          "dcron.static.css",
+          "dcron.static.js",
+          "dcron.templates"
+      ],
       install_requires=requirements,
       python_requires=">=3.7",
       keywords="Python, Python3",
