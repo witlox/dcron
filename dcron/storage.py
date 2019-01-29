@@ -68,13 +68,14 @@ class Storage:
         save our cache to disk
         """
         self.logger.debug("auto-save")
-        if not self.path_prefix:
+        if self.path_prefix:
+            path = join(self.path_prefix, 'cluster_status.pickle')
+            self.logger.debug("saving cache to {0}".format(path))
+            async with aiofiles.open(path, 'wb') as handle:
+                await handle.write(pickle.dumps(self._cluster_status))
+        else:
             self.logger.warning("no path specified for cache, cannot save")
-            return
-        path = join(self.path_prefix, 'cluster_status.pickle')
-        self.logger.debug("saving cache to {0}".format(path))
-        async with aiofiles.open(path, 'wb') as handle:
-            await handle.write(pickle.dumps(self._cluster_status))
+            await asyncio.sleep(0.1)
 
     async def process(self):
         """

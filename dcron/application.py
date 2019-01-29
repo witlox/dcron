@@ -115,9 +115,16 @@ def main():
                 await scheduler.check_jobs(datetime.utcnow())
                 await asyncio.sleep(60)
 
+        async def save_schedule():
+            while running:
+                await asyncio.sleep(100)
+                await storage.save()
+
         loop.create_task(scheduled_broadcast())
         loop.create_task(scheduled_rebalance())
         loop.create_task(scheduled_schedule())
+        if args.storage_path:
+            loop.create_task(save_schedule())
 
         logger.info("starting web application server on http://{0}:{1}/".format(get_ip(), args.web_port))
 
