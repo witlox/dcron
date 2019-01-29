@@ -62,7 +62,7 @@ def test_execution():
     asyncio.set_event_loop(loop)
 
     cron_job = CronJob(command="echo 'hello world'")
-    cron_job.assigned_to = get_ip()
+    cron_job.assigned_to = StatusMessage(ip=get_ip())
     storage = Storage()
 
     storage._cluster_jobs.clear()
