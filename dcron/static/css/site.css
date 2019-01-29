@@ -8,10 +8,6 @@ th, td {
     padding: 8px;
 }
 
-tr:nth-child(even){
-    background-color: #aeadf2
-}
-
 th {
     background-color: #5754af;
     color: white;

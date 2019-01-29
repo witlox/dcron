@@ -97,7 +97,7 @@ def main():
                 time.sleep(60)
                 if not scheduler.check_cluster_state():
                     logger.info("rebalanced cluster")
-                    jobs = storage.cron_jobs().copy()
+                    jobs = list(storage.cron_jobs()).copy()
                     for packet in Rebalance().dump():
                         client(args.communication_port, packet)
                     for job in jobs:

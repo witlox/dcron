@@ -29,7 +29,7 @@ import sys
 
 from setuptools import setup
 
-version = "0.4"
+version = "0.5"
 
 requirements = ['aiohttp', 'aiofiles', 'aiohttp_jinja2', 'ntplib']
 
