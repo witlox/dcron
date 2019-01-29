@@ -11,9 +11,9 @@
         {% if node.state == 'running' %}
         <tr bgcolor="#90ee90">
         {% elif node.state == 'disconnected' %}
-        <tr bgcolor="#90ee90">
-        {% else %}
         <tr bgcolor="#cd5c5c">
+        {% else %}
+        <tr>
         {% endif %}
             <td width="30%">{{ node.ip }}</td>
             <td width="30%">{{ node.time.strftime('%d.%m.%Y %H:%M:%S') }}</td>

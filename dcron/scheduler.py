@@ -80,7 +80,14 @@ class Scheduler:
         for job in self.storage.cron_jobs():
             if job.should_run_now(now) and job.assigned_to.ip == get_ip():
                 self.logger.info("going to execute timed job: {0}".format(job.command))
-                job.last_exit_code, job.last_std_out, job.last_std_err = await run_async(job.command)
+                ec, std_out, std_err = await run_async(job.command)
+                if std_err:
+                    self.logger.warning("error during execution of {0}: {1}".format(job.command, std_err))
+                self.logger.debug("output of {0}: {1}".format(job.command, std_out))
+                job.last_exit_code = ec
+                job.last_std_out = std_out
+                job.last_std_err = std_err
+                self.storage.update_job_state(job)
 
     def check_cluster_state(self):
         """

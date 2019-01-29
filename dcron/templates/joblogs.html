@@ -9,8 +9,8 @@
     </thead>
     <tbody>
         <tr>
-            <td width="49%">{{ job.last_std_out }}</td>
-            <td width="49%">{{ job.last_std_err }}</td>
+            <td width="49%">{{ job.last_std_out.decode("utf-8") }}</td>
+            <td width="49%">{{ job.last_std_err.decode("utf-8") }}</td>
             <td width="2%">{{ job.last_exit_code }}</td>
         </tr>
     </tbody>

@@ -181,3 +181,14 @@ class Storage:
         """
         for cron_job in self._cluster_jobs:
             yield cron_job
+
+    def update_job_state(self, job):
+        """
+        update state of existing cron job
+        :param job: CronJob
+        """
+        for cron_job in self._cluster_jobs:
+            if cron_job == job:
+                cron_job.last_exit_code = job.last_exit_code
+                cron_job.last_std_out = job.last_std_out
+                cron_job.last_std_err = job.last_std_err

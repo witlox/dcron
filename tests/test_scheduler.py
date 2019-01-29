@@ -24,7 +24,6 @@
 # SOFTWARE.
 
 import asyncio
-import time
 from datetime import datetime
 
 from dcron.protocols.cronjob import CronJob
