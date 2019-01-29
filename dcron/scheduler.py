@@ -78,7 +78,7 @@ class Scheduler:
         """
         self.logger.debug("checking if jobs need executing")
         for job in self.storage.cron_jobs():
-            if job.should_run_now(now) and job.assigned_to == get_ip():
+            if job.should_run_now(now) and job.assigned_to.ip == get_ip():
                 self.logger.info("going to execute timed job: {0}".format(job.command))
                 job.last_exit_code, job.last_std_out, job.last_std_err = await run_async(job.command)
 

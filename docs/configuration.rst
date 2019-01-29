@@ -122,4 +122,20 @@ For every user you want to give access, run the following command:
 
 and enter a password.
 
+Log file rotation
+=================
+Check if logrotate is installed on your system, if not install it `apt-get install logrotate`.
+Create the file /etc/logrotate.d/dcron::
+
+    /var/log/dcron.log {
+        weekly
+        size 100M
+        rotate 12
+        compress
+        delaycompress
+        missingok
+        notifempty
+        create 644 root root
+    }
+
 You should now be good to go.
