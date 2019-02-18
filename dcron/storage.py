@@ -62,6 +62,13 @@ class Storage:
             self.logger.debug("loading cache from {0}".format(path))
             with open(path, 'rb') as handle:
                 self._cluster_status = pickle.load(handle)
+            path = join(self.path_prefix, 'cluster_jobs.pickle')
+            if not exists(path):
+                self.logger.info("no previous cache detected on {0}".format(path))
+                return
+            self.logger.debug("loading cache from {0}".format(path))
+            with open(path, 'rb') as handle:
+                self._cluster_jobs = pickle.load(handle)
 
     async def save(self):
         """
@@ -70,9 +77,13 @@ class Storage:
         self.logger.debug("auto-save")
         if self.path_prefix:
             path = join(self.path_prefix, 'cluster_status.pickle')
-            self.logger.debug("saving cache to {0}".format(path))
+            self.logger.debug("saving status cache to {0}".format(path))
             async with aiofiles.open(path, 'wb') as handle:
                 await handle.write(pickle.dumps(self._cluster_status))
+            path = join(self.path_prefix, 'cluster_jobs.pickle')
+            self.logger.debug("saving job cache to {0}".format(path))
+            async with aiofiles.open(path, 'wb') as handle:
+                await handle.write(pickle.dumps(self._cluster_jobs))
         else:
             self.logger.warning("no path specified for cache, cannot save")
             await asyncio.sleep(0.1)

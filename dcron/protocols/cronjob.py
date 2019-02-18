@@ -103,13 +103,13 @@ class CronJob(Serializable):
             if not self.hour == now.hour:
                 return False
         if self.day_of_month:
-            if not self.day_of_month == now.day_of_month:
+            if not self.day_of_month == now.day:
                 return False
         if self.month:
             if not self.month == now.month:
                 return False
         if self.day_of_week:
-            if not self.day_of_week == now.day_of_week:
+            if not self.day_of_week == now.weekday():
                 return False
         return True
 
