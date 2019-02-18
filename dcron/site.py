@@ -101,6 +101,7 @@ class Site:
         for job in self.storage.cron_jobs():
             if job == cron_job:
                 return dict(job=job)
+        return cron_job
 
     async def add_job(self, request):
         data = await request.post()
