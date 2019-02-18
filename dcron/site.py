@@ -88,20 +88,20 @@ class Site:
         if data['minute'] != 'None':
             minute = int(data['minute'])
         if data['hour'] != 'None':
-            minute = int(data['hour'])
+            hour = int(data['hour'])
         if data['dayofmonth'] != 'None':
-            minute = int(data['dayofmonth'])
+            day_of_month = int(data['dayofmonth'])
         if data['month'] != 'None':
-            minute = int(data['month'])
+            month = int(data['month'])
         if data['dayofweek'] != 'None':
-            minute = int(data['dayofweek'])
+            day_of_week = int(data['dayofweek'])
 
         cron_job = CronJob(minute, hour, day_of_month, month, day_of_week, data['command'])
 
         for job in self.storage.cron_jobs():
             if job == cron_job:
                 return dict(job=job)
-        return cron_job
+        return dict(job=cron_job)
 
     async def add_job(self, request):
         data = await request.post()

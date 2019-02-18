@@ -1,4 +1,4 @@
-<p>Job details for {{ job.command }} on {{ job.assigned_to }}</p>
+<p>Job details for {{ job.command }} {% if job.assigned_to is not none %}{{ job.assigned_to.ip }}{% endif %}</p>
 <table id="joblogtable">
     <thead>
     <tr>
