@@ -14,7 +14,7 @@ Please check the [docs]() regarding installation, configuration and options.
 
 Installing the package
 ======================
-You need python 3.7 or higher to run this package. The package can be installed using ``pip install dcron``.
+You need python 3.7 including development libraries or higher to run this package. The package can be installed using ``pip install dcron``.
 
 Running the package
 ===================

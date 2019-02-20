@@ -11,11 +11,8 @@ We recommend not running this system on a broad subnet, because it is broadcasti
 
 python3.7 on Ubuntu 18
 ======================
-Install python 3.7 on Ubuntu from the deadsnakes ppa::
+Install python 3.7 on Ubuntu from source (or from your package manager if it's included), you need the development headers (Python.h)::
 
-    apt install software-properties-common
-    add-apt-repository ppa:deadsnakes/ppa
-    apt install python3.7
     update-alternatives --install /usr/bin/python python /usr/bin/python2.7 1
     update-alternatives --install /usr/bin/python python /usr/bin/python3.6 2
     update-alternatives --install /usr/bin/python python /usr/bin/python3.7 3
