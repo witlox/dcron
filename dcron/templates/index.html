@@ -59,6 +59,21 @@
             }
         });
     }
+    function killJob(elem) {
+        let kve = $(elem).data("cmd").split(',');
+        let request_data = {};
+        for (let i = 0; i < kve.length; i++) {
+            request_data[kve[i].split(':')[0]] = kve[i].split(':')[1];
+        }
+        $.ajax({
+            url: '/kill_job',
+            data: request_data,
+            type: 'POST',
+            success: function (result) {
+                console.log(result);
+            }
+        });
+    }
 </script>
 {% endblock %}
 

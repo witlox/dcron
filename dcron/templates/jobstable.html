@@ -13,12 +13,16 @@
         </tr>
     </thead>
     <tbody>
-        {% for job in jobs%}
-        {% if job.last_exit_code == 0 %}
+        {% for job in jobs %}
+            {% if job.last_exit_code == 0 %}
         <tr bgcolor="#90ee90">
-        {% else %}
+            {% elif job.last_exit_code is none and job.pid is none %}
+        <tr>
+            {% elif job.last_exit_code is none and job.pid is defined %}
+        <tr bgcolor="#ffd700">
+            {% else %}
         <tr bgcolor="#cd5c5c">
-        {% endif %}
+            {% endif %}
             <td width="7%">{% if job.minute %}{{ job.minute }}{% else %} * {% endif %}</td>
             <td width="7%">{% if job.hour %}{{ job.hour }}{% else %} * {% endif %}</td>
             <td width="7%">{% if job.day_of_month %}{{ job.day_of_month }}{% else %} * {% endif %}</td>

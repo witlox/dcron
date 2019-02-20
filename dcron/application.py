@@ -42,7 +42,8 @@ from dcron.site import Site
 from dcron.storage import Storage
 from dcron.utils import get_ip, get_ntp_offset, get_load
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8.8s]  %(message)s")
+log_format = "%(asctime)s [%(levelname)-8.8s]  %(message)s"
+logging.basicConfig(level=logging.INFO, format=log_format)
 logger = logging.getLogger('dcron')
 
 
@@ -65,6 +66,7 @@ def main():
     root_logger = logging.getLogger()
     if args.log_file:
         file_handler = logging.FileHandler(args.log_file)
+        file_handler.setFormatter(log_format)
         root_logger.addHandler(file_handler)
     if args.verbose:
         root_logger.setLevel(logging.DEBUG)

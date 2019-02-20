@@ -48,6 +48,7 @@ class Site:
         self.app.add_routes([web.get('/nodes', self.get_nodes)])
         self.app.add_routes([web.get('/jobs', self.get_jobs)])
         self.app.add_routes([web.post('/joblog', self.get_job_log)])
+        self.app.add_routes([web.post('/kill_job', self.kill_job)])
         self.app.add_routes([web.post('/job', self.add_job)])
         self.app.add_routes([web.post('/remove_job', self.remove_job)])
 
@@ -102,6 +103,40 @@ class Site:
             if job == cron_job:
                 return dict(job=job)
         return dict(job=cron_job)
+
+    async def kill_job(self, request):
+        data = await request.post()
+
+        if 'command' not in data or \
+                'minute' not in data or \
+                'hour' not in data or \
+                'dayofmonth' not in data or \
+                'month' not in data or \
+                'dayofweek' not in data:
+            return web.Response(status=500, text='not all mandatory fields submitted')
+
+        minute = None
+        hour = None
+        day_of_month = None
+        month = None
+        day_of_week = None
+
+        if data['minute'] != 'None':
+            minute = int(data['minute'])
+        if data['hour'] != 'None':
+            hour = int(data['hour'])
+        if data['dayofmonth'] != 'None':
+            day_of_month = int(data['dayofmonth'])
+        if data['month'] != 'None':
+            month = int(data['month'])
+        if data['dayofweek'] != 'None':
+            day_of_week = int(data['dayofweek'])
+
+        cron_job = CronJob(minute, hour, day_of_month, month, day_of_week, data['command'])
+
+        for job in self.storage.cron_jobs():
+            if job == cron_job:
+                job.kill()
 
     async def add_job(self, request):
         data = await request.post()

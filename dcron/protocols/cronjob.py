@@ -23,15 +23,19 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import psutil
+
 from dcron.protocols.base import Serializable
 
 
 class CronJob(Serializable):
 
     assigned_to = None
-    last_exit_code = 0
+    last_start_on = None
+    last_exit_code = None
     last_std_out = None
     last_std_err = None
+    pid = None
 
     def __init__(self, minute=None, hour=None, day_of_month=None, month=None, day_of_week=None, command=None):
         """
@@ -112,6 +116,15 @@ class CronJob(Serializable):
             if not self.day_of_week == now.weekday():
                 return False
         return True
+
+    def is_running(self):
+        return self.pid and not self.last_exit_code
+
+    def kill(self):
+        if self.is_running():
+            p = psutil.Process(self.pid)
+            p.kill()
+            self.pid = None
 
 
 class RemoveCronJob(CronJob):

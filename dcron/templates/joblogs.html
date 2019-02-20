@@ -1,4 +1,8 @@
 <p>Job details for {{ job.command }} {% if job.assigned_to is not none %}{{ job.assigned_to.ip }}{% endif %}</p>
+{% if job.last_exit_code is none and job.pid is defined %}
+<p>The job  was started at {{ job.last_start_on }}</p>
+<p><button type="button" onclick="killJob(this);" data-cmd="minute:{{ job.minute }},hour:{{job.hour}},dayofmonth:{{ job.day_of_month }},month:{{ job.month }},dayofweek:{{ job.day_of_week }},command:{{ job.command }}">kill</button></p>
+{% endif %}
 <table id="joblogtable">
     <thead>
     <tr>

@@ -44,8 +44,11 @@ def node_pick(node_count, pick_count):
     return result
 
 
-async def run_async(cmd):
-    proc = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+async def define_run_async(cmd):
+    return await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+
+
+async def run_async(proc):
     stdout, stderr = await proc.communicate()
     return proc.returncode, stdout, stderr
 
@@ -78,9 +81,19 @@ class Scheduler:
         """
         self.logger.debug("checking if jobs need executing")
         for job in self.storage.cron_jobs():
-            if job.should_run_now(now) and job.assigned_to.ip == get_ip():
+            if job.should_run_now(now) and job.assigned_to and job.assigned_to.ip == get_ip():
+                if job.is_running():
+                    self.logger.warning("timed job {0} still running, going to kill it in order to restart")
+                    job.kill()
                 self.logger.info("going to execute timed job: {0}".format(job.command))
-                ec, std_out, std_err = await run_async(job.command)
+                process = await define_run_async(job.command)
+                self.logger.debug("{0} has been defined".format(job.command))
+                job.last_start_on = datetime.utcnow()
+                job.last_exit_code = None
+                job.pid = process.pid
+                self.storage.update_job_state(job)
+                self.logger.debug("{0} to execution state".format(job.command))
+                ec, std_out, std_err = await run_async(process)
                 if std_err:
                     self.logger.warning("error during execution of {0}: {1}".format(job.command, std_err))
                 self.logger.debug("output of {0}: {1}".format(job.command, std_out))
