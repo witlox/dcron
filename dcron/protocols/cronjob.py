@@ -122,9 +122,13 @@ class CronJob(Serializable):
 
     def kill(self):
         if self.is_running():
-            p = psutil.Process(self.pid)
-            p.kill()
-            self.pid = None
+            try:
+                p = psutil.Process(self.pid)
+                p.kill()
+            except psutil.NoSuchProcess:
+                pass
+            finally:
+                self.pid = None
 
 
 class RemoveCronJob(CronJob):

@@ -83,7 +83,7 @@ class Scheduler:
         for job in self.storage.cron_jobs():
             if job.should_run_now(now) and job.assigned_to and job.assigned_to.ip == get_ip():
                 if job.is_running():
-                    self.logger.warning("timed job {0} still running, going to kill it in order to restart")
+                    self.logger.warning("timed job {0} still running, going to kill it in order to restart".format(job.command))
                     job.kill()
                 self.logger.info("going to execute timed job: {0}".format(job.command))
                 process = await define_run_async(job.command)
