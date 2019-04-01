@@ -44,15 +44,6 @@ def node_pick(node_count, pick_count):
     return result
 
 
-async def define_run_async(cmd):
-    return await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-
-
-async def run_async(proc):
-    stdout, stderr = await proc.communicate()
-    return proc.returncode, stdout, stderr
-
-
 class Scheduler:
 
     logger = logging.getLogger(__name__)
@@ -79,25 +70,26 @@ class Scheduler:
         check if you have to start a CronJob
         :param now: current date time
         """
-        self.logger.debug("checking if jobs need executing")
+        self.logger.debug("checking jobs states")
         for job in self.storage.cron_jobs():
             if job.should_run_now(now) and job.assigned_to and job.assigned_to.ip == get_ip():
                 if job.is_running():
                     self.logger.warning("timed job {0} still running, going to kill it in order to restart".format(job.command))
                     job.kill()
                 self.logger.info("going to execute timed job: {0}".format(job.command))
-                process = await define_run_async(job.command)
+                process = await asyncio.create_subprocess_shell(job.command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
                 self.logger.debug("{0} has been defined".format(job.command))
                 job.last_start_on = datetime.utcnow()
                 job.last_exit_code = None
                 job.pid = process.pid
                 self.storage.update_job_state(job)
                 self.logger.debug("{0} to execution state".format(job.command))
-                ec, std_out, std_err = await run_async(process)
+                std_out, std_err = await process.communicate()
+                exit_code = await process.wait()
                 if std_err:
                     self.logger.warning("error during execution of {0}: {1}".format(job.command, std_err))
                 self.logger.debug("output of {0}: {1}".format(job.command, std_out))
-                job.last_exit_code = ec
+                job.last_exit_code = exit_code
                 job.last_std_out = std_out
                 job.last_std_err = std_err
                 self.storage.update_job_state(job)
