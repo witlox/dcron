@@ -23,9 +23,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import dcron.protocols.base
-import dcron.protocols.cronjob
-import dcron.protocols.status
+import dcron.protocols.messages
+import dcron.protocols.udpserializer
 
 from dcron.protocols.packet import Packet
 

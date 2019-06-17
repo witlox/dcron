@@ -23,54 +23,45 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import struct
+from datetime import datetime
 
 
-class Packet(object):
-    """
-    UDP Packet
-    """
+class Kill(object):
 
-    max_size = 1024
-    uuid_size = 36
-    total_size = 4
-    index_size = 4
-    data_size = 980
+    def __init__(self, job):
+        self.job = job
+        self.pid = next(job.log)['pid']
 
-    def __init__(self, id, total, index, data):
-        """
-        Our UDP Packet structure
-        :param id: uuid
-        :param total: total amount of packets for an object
-        :param index: current index of total
-        :param data: raw byte data
-        """
-        self.id = id
-        self.total = total
-        self.index = index
-        self.data = data
 
-    def encode(self):
-        """
-        create the binary data for UDP Packet
-        :return: binary data
-        """
-        return struct.pack('!36sLL980s', self.id.encode('utf-8'), self.total, self.index, self.data)
+class Run(object):
 
-    @staticmethod
-    def decode(packet):
+    def __init__(self, job):
+        self.job = job
+
+
+class Status(object):
+
+    def __init__(self, ip=None, system_load=None):
         """
-        decode a single UDP Packet from raw bytes
-        :param packet: packet
-        :return: UdpPacket or None
+        our serializable Status Message
+        :param ip: ip address
+        :param system_load: system load (0-100%)
         """
-        try:
-            lid, ltot, lidx, ldat = struct.unpack('!36sLL980s', packet)
-            return Packet(lid.decode('utf-8'), ltot, lidx, ldat)
-        except:
-            return None
+        self.ip = ip
+        self.time = datetime.utcnow()
+        self.system_load = system_load
+        self.state = 'running'
 
     def __eq__(self, other):
-        if not other or not isinstance(other, Packet):
+        if not other or not isinstance(other, Status):
             return False
-        return self.id == other.id
+        return self.ip == other.ip and self.time == other.time
+
+    def __hash__(self):
+        return hash(self.ip)
+
+
+class ReBalance(object):
+
+    def __init__(self, timestamp):
+        self.timestamp = timestamp

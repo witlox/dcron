@@ -1,21 +1,19 @@
-<p>Job details for {{ job.command }} {% if job.assigned_to is not none %}{{ job.assigned_to.ip }}{% endif %}</p>
-{% if job.last_exit_code is none and job.pid is defined %}
-<p>The job  was started at {{ job.last_start_on }}</p>
-<p><button type="button" onclick="killJob(this);" data-cmd="minute:{{ job.minute }},hour:{{job.hour}},dayofmonth:{{ job.day_of_month }},month:{{ job.month }},dayofweek:{{ job.day_of_week }},command:{{ job.command }}">kill</button></p>
+<p>Job details for {{ job.command }} {% if job.assigned_to is not none %}{{ job.assigned_to }}{% endif %}</p>
+{% if job.pid %}
+<p><button type="button" onclick="killJob(this);" data-cmd="minute:{{ job.minute }},hour:{{job.hour}},dom:{{ job.dom }},month:{{ job.month }},dow:{{ job.dow }},command:{{ job.command }}">kill</button></p>
 {% endif %}
 <table id="joblogtable">
     <thead>
-    <tr>
-        <th width="49%">stdout</th>
-        <th width="49%">stderr</th>
-        <th width="2%">exit</th>
-    </tr>
+        <tr>
+            <th width="80%">logs</th>
+        </tr>
     </thead>
     <tbody>
+        {% for entry in job.log %}
         <tr>
-            <td width="49%">{% if job.last_std_out is not none %}{{ job.last_std_out.decode("utf-8") }}{% else %}none{% endif %}</td>
-            <td width="49%">{% if job.last_std_out is not none %}{{ job.last_std_err.decode("utf-8") }}{% else %}none{% endif %}</td>
-            <td width="2%">{% if job.last_std_out is not none %}{{ job.last_exit_code }}{% else %}none{% endif %}</td>
+            <td width="80%">{{ entry }}</td>
         </tr>
+        {% endfor %}
     </tbody>
 </table>
+{{job}}

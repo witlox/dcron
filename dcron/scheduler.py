@@ -24,27 +24,15 @@
 # SOFTWARE.
 
 import logging
-import asyncio
 
 from datetime import timedelta, datetime
-from itertools import combinations
-from random import randint
-
-from dcron.utils import get_ip
+from random import shuffle
 
 
-def node_pick(node_count, pick_count):
-    result = ()
-    if pick_count == node_count:
-        for i in range(pick_count):
-            result += (i,)
-    else:
-        for i in range(pick_count):
-            result += (randint(0, node_count),)
-    return result
-
-
-class Scheduler:
+class Scheduler(object):
+    """
+    Simple Scheduler Mechanism
+    """
 
     logger = logging.getLogger(__name__)
 
@@ -63,79 +51,64 @@ class Scheduler:
                 yield node
             else:
                 node.state = 'disconnected'
-                self.storage.put_nowait(node)
-
-    async def check_jobs(self, now):
-        """
-        check if you have to start a CronJob
-        :param now: current date time
-        """
-        self.logger.debug("checking jobs states")
-        for job in self.storage.cron_jobs():
-            if job.should_run_now(now) and job.assigned_to and job.assigned_to.ip == get_ip():
-                if job.is_running():
-                    self.logger.warning("timed job {0} still running, going to kill it in order to restart".format(job.command))
-                    job.kill()
-                self.logger.info("going to execute timed job: {0}".format(job.command))
-                process = await asyncio.create_subprocess_shell(job.command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-                self.logger.debug("{0} has been defined".format(job.command))
-                job.last_start_on = datetime.utcnow()
-                job.last_exit_code = None
-                job.pid = process.pid
-                self.storage.update_job_state(job)
-                self.logger.debug("{0} to execution state".format(job.command))
-                std_out, std_err = await process.communicate()
-                exit_code = await process.wait()
-                if std_err:
-                    self.logger.warning("error during execution of {0}: {1}".format(job.command, std_err))
-                self.logger.debug("output of {0}: {1}".format(job.command, std_out))
-                job.last_exit_code = exit_code
-                job.last_std_out = std_out
-                job.last_std_err = std_err
-                self.storage.update_job_state(job)
+                yield node
 
     def check_cluster_state(self):
         """
-        check cluster state, if invalid, rebalance
-        :return False if rebalanced otherwise True
+        check cluster state
+        :return False if invalid otherwise True
         """
         left = list(self.storage.cluster_state())
         right = list(self.active_nodes())
         inactive_nodes = [i for i in left + right if i not in left or i not in right]
-        for job in self.storage.cron_jobs():
-            if not job.is_assigned():
-                self.logger.debug("detected unassigned job ({0}), rebalancing".format(job.command))
-                self.rebalance()
+        for job in self.storage.cluster_jobs:
+            if not job.assigned_to:
+                self.logger.info("detected unassigned job ({0})".format(job.command))
+                self.re_balance()
                 return False
             if job.assigned_to in inactive_nodes:
-                self.logger.debug("detected job ({0}) on inactive node, rebalancing".format(job.command))
-                self.rebalance()
+                self.logger.warning("detected job ({0}) on inactive node".format(job.command))
+                self.re_balance()
                 return False
         return True
 
-    def rebalance(self):
+    def re_balance(self):
         """
         Redistribute CronJobs over the cluster
         """
-        nodes = [n for n in self.active_nodes()]
-        jobs = list(self.storage.cron_jobs())
-        overlaps = [(l, r) for (l, r) in combinations(jobs, 2) if l.overlapping(r)]
+        def partition(lst, keys):
+            """
+            divide a list over a given set of keys
+            :param lst: list to split in roughly equals chunks
+            :param keys: keys for the chunks
+            :return: dictionary of keys with list chunks
+            """
+            shuffle(lst)
+            return {keys[i]: lst[i::len(keys)] for i in range(len(keys))}
+        
+        def first_key_by_value(dct, jb):
+            """
+            find the first key in a dictionary where jb is in the values
+            :param dct: dictionary to analyse
+            :param jb: value to search for
+            :return: key or None
+            """
+            for n, jbs in dct.items():
+                if jb in jbs:
+                    return n
+            return None
 
-        for l, r in overlaps:
-            if l in jobs:
-                jobs.remove(l)
-            if r in jobs:
-                jobs.remove(r)
-            nl, nr = node_pick(len(nodes), 2)
-            if not l.is_assigned():
-                self.logger.info("assigning jobs {0} to node {1}".format(l, nodes[nl]))
-                l.assign(nodes[nl])
-            if not r.is_assigned():
-                r.assign(nodes[nr])
-                self.logger.info("assigning jobs {0} to node {1}".format(r, nodes[nr]))
+        nodes = [n for n in self.active_nodes()]
+        jobs = list(self.storage.cluster_jobs)
+
+        partitions = partition(jobs, nodes)
 
         for job in jobs:
-            if not job.is_assigned():
-                draw = node_pick(len(nodes) - 1, 1)[0]
-                self.logger.info("assigning jobs {0} to node {1}".format(job, nodes[draw]))
-                job.assign(nodes[draw])
+            node = first_key_by_value(partitions, job)
+            if not node:
+                self.logger.error("could not find node assignment for job {0}".format(job))
+            else:
+                self.logger.info("assigning job {0} to node {1}".format(job, node.ip))
+                job.assigned_to = node.ip
+
+        self.storage.cluster_jobs = jobs

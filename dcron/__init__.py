@@ -24,6 +24,8 @@
 # SOFTWARE.
 
 import dcron.application
+import dcron.processor
+import dcron.scheduler
 import dcron.site
 import dcron.storage
 import dcron.utils

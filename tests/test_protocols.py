@@ -25,34 +25,36 @@
 
 import random
 import string
+from uuid import uuid4
 
+from dcron.cron.cronitem import CronItem
 from dcron.protocols import Packet
-from dcron.protocols.cronjob import CronJob
-from dcron.protocols.status import StatusMessage
+from dcron.protocols.messages import Status
+from dcron.protocols.udpserializer import UdpSerializer
 
 
 def test_packet_encoding_and_decoding():
     data = b'hello world'
-    p = Packet(1, 1, data)
+    p = Packet(str(uuid4()), 1, 1, data)
     encoded = p.encode()
     assert p == Packet.decode(encoded)
 
 
 def test_status_message_dumps_loads():
-    sm = StatusMessage('127.0.0.1', 0)
-    packets = list(sm.dump())
+    sm = Status('127.0.0.1', 0)
+    packets = list(UdpSerializer.dump(sm))
     assert len(packets) == 1
-    assert sm == StatusMessage.load(packets)
+    assert sm == UdpSerializer.load(packets)
 
 
 def test_cron_job_message_dumps_loads():
-    cj = CronJob(command="echo 'hello world'")
-    packets = list(cj.dump())
-    assert cj == CronJob.load(packets)
+    cj = CronItem(command="echo 'hello world'")
+    packets = list(UdpSerializer.dump(cj))
+    assert cj == UdpSerializer.load(packets)
 
 
 def test_cron_with_message_larger_then_max():
-    cj = CronJob(command=''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6000)))
-    packets = list(cj.dump())
+    cj = CronItem(command=''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6000)))
+    packets = list(UdpSerializer.dump(cj))
     assert len(packets) > 1
-    assert cj == CronJob.load(packets)
+    assert cj == UdpSerializer.load(packets)

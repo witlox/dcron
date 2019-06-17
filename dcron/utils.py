@@ -24,7 +24,9 @@
 # SOFTWARE.
 
 import os
+import signal
 import socket
+import psutil
 
 import ntplib as ntplib
 
@@ -61,3 +63,46 @@ def get_load():
         return os.getloadavg()[0]
     except OSError:
         return 0
+
+
+def check_process(command, pid=None):
+    """
+    check for the existence of a unix process with a given command (by pid if given).
+    :param command: command associated with it
+    :param pid: pid that should exist
+    :return: pid or None
+    """
+    for proc in psutil.process_iter():
+        try:
+            if command in ' '.join(proc.cmdline()):
+                if not pid:
+                    return proc.pid
+                if pid and proc.pid == pid:
+                    return proc.pid
+        except:
+            pass
+    return None
+
+
+def kill_proc_tree(pid, sig=signal.SIGTERM, include_parent=True, timeout=None, on_terminate=None):
+    """
+    Kill a process tree (including grandchildren) with signal "sig" and return a (gone, still_alive) tuple.
+    "on_terminate", if specified, is a callback function which is called as soon as a child terminates.
+    Will raise ValueError when trying to terminate self.
+    :param pid: process id to terminate
+    :param sig: signal used for termination (default: SIGTERM)
+    :param include_parent: also kill parent process (default: True)
+    :param timeout: timeout for waiting till children are terminated
+    :param on_terminate: callback
+    :return: tuple of processes that have been terminated and still alive
+    """
+    if pid == os.getpid():
+        raise ValueError("won't kill myself")
+    parent = psutil.Process(pid)
+    children = parent.children(recursive=True)
+    if include_parent:
+        children.append(parent)
+    for p in children:
+        p.send_signal(sig)
+    gone, alive = psutil.wait_procs(children, timeout=timeout, callback=on_terminate)
+    return gone, alive

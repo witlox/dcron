@@ -31,6 +31,9 @@ from asyncio import DatagramProtocol
 
 
 class StatusProtocol(DatagramProtocol):
+    """
+    UDP Protocol
+    """
 
     logger = logging.getLogger(__name__)
 
@@ -53,7 +56,10 @@ class StatusProtocol(DatagramProtocol):
         self.logger.debug("connection closed ({0})".format(exc))
 
 
-class StatusProtocolServer:
+class StatusProtocolServer(object):
+    """
+    UDP Server
+    """
 
     logger = logging.getLogger(__name__)
     _udp_server_task = None
@@ -61,7 +67,7 @@ class StatusProtocolServer:
     def __init__(self, buffer, port):
         """
         our UDP server socket
-        :param buffer: storage class with put_nowait (ex. Storage or asyncio queue) to emit packets to
+        :param buffer: class with put_nowait (ex. processor or asyncio queue) to emit packets to
         :param port: broadcast port to listen on
         """
         self.port = port

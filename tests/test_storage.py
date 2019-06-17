@@ -24,11 +24,17 @@
 # SOFTWARE.
 
 import asyncio
-from os import remove
+import shutil
+from os import path
 from os.path import exists
+from tempfile import mkdtemp
 
-from dcron.protocols.cronjob import CronJob
-from dcron.protocols.status import StatusMessage
+from dcron.cron import crontab
+from dcron.cron.cronitem import CronItem
+from dcron.cron.crontab import CronTab
+from dcron.processor import Processor
+from dcron.protocols.messages import Status
+from dcron.protocols.udpserializer import UdpSerializer
 from dcron.storage import Storage
 
 
@@ -37,49 +43,53 @@ def test_store_status_message():
     asyncio.set_event_loop(loop)
 
     storage = Storage()
+    processor = Processor(12345, storage, cron=CronTab(tab="""* * * * * command"""))
 
     ip = '127.0.0.1'
 
-    message = StatusMessage(ip, 10)
+    message = Status(ip, 10)
 
-    packets = message.dump()
+    packets = UdpSerializer.dump(message)
     for packet in packets:
-        storage.queue.put_nowait(packet)
+        processor.queue.put_nowait(packet)
 
-    loop.run_until_complete(asyncio.gather(*[storage.process()]))
+    loop.run_until_complete(asyncio.gather(*[processor.process()]))
 
-    assert storage.queue.qsize() == 0
+    assert processor.queue.qsize() == 0
     assert message == storage.node_state(ip)
 
     loop.close()
 
 
 def test_store_cron_job_message_to_disk():
-    pickle = '/tmp/cluster_status.pickle'
-    if exists(pickle):
-        remove(pickle)
+    tmp_dir = mkdtemp()
+    ser = path.join(tmp_dir, 'cluster_jobs.json')
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    storage = Storage(path_prefix='/tmp')
+    storage = Storage(path_prefix=tmp_dir)
 
-    message = CronJob(command="echo 'hello world'")
+    processor = Processor(12345, storage, cron=CronTab(tab="""* * * * * command"""))
 
-    packets = message.dump()
-    for packet in packets:
-        storage.queue.put_nowait(packet)
+    message = CronItem(command="echo 'hello world'")
+    message.append_log("test log message")
 
-    loop.run_until_complete(asyncio.gather(storage.process()))
+    for packet in UdpSerializer.dump(message):
+        processor.queue.put_nowait(packet)
+
+    loop.run_until_complete(asyncio.gather(processor.process()))
 
     loop.run_until_complete(asyncio.gather(storage.save()))
 
-    assert storage.queue.qsize() == 0
-    assert len(list(storage.cron_jobs())) == 1
-    assert message == list(storage.cron_jobs())[0]
-    assert exists(pickle)
+    assert processor.queue.qsize() == 0
+    assert len(storage.cluster_jobs) == 1
+    assert message == storage.cluster_jobs[0]
+    assert exists(ser)
 
     loop.close()
+
+    shutil.rmtree(tmp_dir)
 
 
 def test_store_retrieve_sorts_correctly():
@@ -87,21 +97,44 @@ def test_store_retrieve_sorts_correctly():
     asyncio.set_event_loop(loop)
 
     storage = Storage()
+    processor = Processor(12345, storage, cron=CronTab(tab="""* * * * * command"""))
 
     ip = '127.0.0.1'
 
     messages = []
     for i in range(10):
-        messages.append(StatusMessage(ip, 10))
+        messages.append(Status(ip, 10))
 
     for message in messages:
-        packets = message.dump()
+        packets = UdpSerializer.dump(message)
         for packet in packets:
-            storage.queue.put_nowait(packet)
+            processor.queue.put_nowait(packet)
 
-    while not storage.queue.empty():
-        loop.run_until_complete(asyncio.gather(storage.process()))
+    while not processor.queue.empty():
+        loop.run_until_complete(asyncio.gather(processor.process()))
 
     assert messages[len(messages) - 1].time == storage.node_state(ip).time
 
     loop.close()
+
+
+def test_save_load():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    tmp_dir = mkdtemp()
+    storage = Storage(path_prefix=tmp_dir)
+
+    cron = crontab.CronTab()
+    item = CronItem(command="echo 'hello world'", cron=cron)
+    item.set_all("2 1 * * *")
+    item.append_log("test log message")
+
+    storage.cluster_jobs.append(item)
+    assert 1 == len(storage.cluster_jobs)
+
+    loop.run_until_complete(storage.save())
+
+    storage = Storage(path_prefix=tmp_dir)
+    assert 1 == len(storage.cluster_jobs)
+    shutil.rmtree(tmp_dir)

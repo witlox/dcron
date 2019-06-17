@@ -23,32 +23,37 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from datetime import datetime
+import asyncio
 
-from dcron.protocols.base import Serializable
+from dcron.cron.crontab import CronTab, CronItem
+from dcron.processor import Processor
+from dcron.protocols.udpserializer import UdpSerializer
+from dcron.storage import Storage
+from dcron.utils import get_ip
 
 
-class StatusMessage(Serializable):
+def test_message_deserialization_and_assignment():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
-    def __init__(self, ip=None, system_load=None):
-        """
-        our serializable Status Message
-        :param ip: ip address
-        :param system_load: system load (0-100%)
-        """
-        self.ip = ip
-        self.time = datetime.utcnow()
-        self.system_load = system_load
-        self.state = 'running'
+    command = "echo 'hello world'"
+    cron_job = CronItem(command=command)
+    cron_job.assigned_to = get_ip()
 
-    @staticmethod
-    def load(data):
-        obj = Serializable.load(data)
-        if obj and isinstance(obj, StatusMessage):
-            return obj
-        return None
+    storage = Storage()
 
-    def __eq__(self, other):
-        if not other or not isinstance(other, StatusMessage):
-            return False
-        return self.ip == other.ip and self.time == other.time
+    tab = CronTab(tab="""* * * * * command""")
+    processor = Processor(12345, storage, cron=tab)
+
+    for packet in UdpSerializer.dump(cron_job):
+        processor.queue.put_nowait(packet)
+
+    loop.run_until_complete(processor.process())
+
+    assert 1 == len(storage.cluster_jobs)
+
+    assert command == storage.cluster_jobs[0].command
+
+    assert None is not next(tab.find_command(command), None)
+
+    loop.close()

@@ -23,40 +23,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import asyncio
+import dcron.cron.cronitem
+import dcron.cron.crontab
+import dcron.cron.crontabs
 
-import pytest
-
-from dcron.datagram.client import client
-from dcron.datagram.server import StatusProtocolServer
-from dcron.protocols import Packet
-from dcron.protocols.status import StatusMessage
-from dcron.storage import Storage
-
-
-async def send_packet(port, packets):
-    for packet in packets:
-        client(port, packet)
-
-
-def test_send_receive_broadcast_to_storage():
-    port = 12345
-
-    storage = Storage()
-
-    with StatusProtocolServer(storage, port) as loop:
-
-        async def packet_received():
-            while len(storage._cluster_status) == 0:
-                await asyncio.sleep(0.1)
-
-        assert len(storage._cluster_status) == 0
-
-        packets = list(StatusMessage('127.0.0.1', 0).dump())
-
-        assert len(packets) == 1
-        assert len(packets[0]) == Packet.max_size
-
-        loop.run_until_complete(asyncio.gather(*[packet_received(), send_packet(port, packets)]))
-
-        assert len(storage._cluster_status) == 1

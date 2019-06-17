@@ -26,43 +26,27 @@
 import pickle
 
 from math import ceil
+from uuid import uuid4
 
 from dcron.protocols.packet import Packet
 
 
-class Serializable:
+class UdpSerializer(object):
     """
-    Base class for loading and dumping objects to and from bytes
+    Serialization methods for UDP Packets
     """
-
-    def _serialize(self):
-        return pickle.dumps(self)
-
+    
     @staticmethod
-    def _deserialize(serialized_object):
-        return pickle.loads(serialized_object)
-
-    @staticmethod
-    def _validate(data):
+    def dump(obj):
         """
-        validate if the object is complete
-        :param data: list of (raw) udp_packet
-        :return: true or false
+        serialize your object to list of (raw) udp_packet
+        :return: udp_packets
         """
-        packets = []
-        for elem in data:
-            p = Packet.decode(elem)
-            if not p:
-                p = elem
-            packets.append(p)
-        if len(packets) == 0:
-            return False
-        expected = range(0, packets[0].total)
-        given = [i.index for i in packets]
-        missing = [x for x in expected if x not in given]
-        if len(missing) > 0:
-            return False
-        return True
+        buffer = pickle.dumps(obj)
+        total = ceil(len(buffer) / Packet.data_size)
+        uuid = str(uuid4())
+        for i in range(total):
+            yield Packet(uuid, total, i, buffer[i * Packet.data_size:(i + 1) * Packet.data_size]).encode()
 
     @staticmethod
     def load(data):
@@ -71,21 +55,22 @@ class Serializable:
         :param data: list of raw udp_packet
         :return: the object or None
         """
-        if not Serializable._validate(data):
-            return None
         packets = []
         for elem in data:
             p = Packet.decode(elem)
             if not p:
                 p = elem
             packets.append(p)
+        # validation
+        if len(packets) == 0:
+            return None
+        expected = range(0, packets[0].total)
+        given = [i.index for i in packets]
+        missing = [x for x in expected if x not in given]
+        if len(missing) > 0:
+            return None
+        # validation passed
         buffer = b''
         for p in sorted(packets, key=lambda x: x.index):
             buffer += p.data
-        return Serializable._deserialize(buffer)
-
-    def dump(self):
-        buffer = self._serialize()
-        total = ceil(len(buffer) / Packet.data_size)
-        for i in range(total):
-            yield Packet(total, i, buffer[i*Packet.data_size:(i+1)*Packet.data_size]).encode()
+        return pickle.loads(buffer)

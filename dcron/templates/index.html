@@ -4,12 +4,11 @@
 <script type="text/javascript">
     $(document).ready(function() {
         let updateTables = function() {
-            $('#nodestable').load('/nodes');
-            $('#jobstable').load('/jobs');
+            $('#nodestable').load('/list_nodes');
+            $('#jobstable').load('/list_jobs');
         };
         setInterval(updateTables, 1000);
     });
-
     function formVisibility() {
         let elem = document.getElementById("addcronform");
         if (elem.style.display === "none") {
@@ -18,7 +17,6 @@
             elem.style.display = "none";
         }
     }
-
     function logVisibility() {
         let elem = document.getElementById("joblogdiv");
         if (elem.style.display === "none") {
@@ -26,23 +24,6 @@
         } else {
             elem.style.display = "none";
         }
-    }
-    function jobLog(elem) {
-        let kve = $(elem).data("cmd").split(',');
-        let request_data = {};
-        for (let i = 0; i < kve.length; i++) {
-            request_data[kve[i].split(':')[0]] = kve[i].split(':')[1];
-        }
-        $.ajax({
-            url: '/joblog',
-            data: request_data,
-            type: 'POST',
-            success: function (result) {
-                console.log(result);
-                $('#joblog').html(result);
-                logVisibility();
-            }
-        });
     }
     function removeJob(elem) {
         let kve = $(elem).data("cmd").split(',');
@@ -59,6 +40,27 @@
             }
         });
     }
+    function jobLog(elem) {
+        let kve = $(elem).data("cmd").split(',');
+        let request_data = {};
+        for (let i = 0; i < kve.length; i++) {
+            request_data[kve[i].split(':')[0]] = kve[i].split(':')[1];
+        }
+        $.ajax({
+            url: '/get_job_log',
+            data: request_data,
+            type: 'POST',
+            success: function (result) {
+                console.log(result);
+                $('#joblog').html(result);
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                console.log(xhr.status);
+                console.log(xhr.responseText);
+            }
+        });
+        logVisibility();
+    }
     function killJob(elem) {
         let kve = $(elem).data("cmd").split(',');
         let request_data = {};
@@ -74,6 +76,21 @@
             }
         });
     }
+    function runJob(elem) {
+        let kve = $(elem).data("cmd").split(',');
+        let request_data = {};
+        for (let i = 0; i < kve.length; i++) {
+            request_data[kve[i].split(':')[0]] = kve[i].split(':')[1];
+        }
+        $.ajax({
+            url: '/run_job',
+            data: request_data,
+            type: 'POST',
+            success: function (result) {
+                console.log(result);
+            }
+        });
+    }
 </script>
 {% endblock %}
 
@@ -82,12 +99,10 @@ dcron console
 {% endblock %}
 
 {% block content %}
-<div id="nodestable">
-</div>
+<div id="nodestable"></div>
 <p>overview of active nodes</p>
 <br/><br/>
-<div id="jobstable">
-</div>
+<div id="jobstable"></div>
 <p>overview of active jobs</p>
 <div align="center" style="display:none" id="joblogdiv">
     <div id="joblog"></div>
@@ -97,7 +112,7 @@ dcron console
 <div align="center">
     <button id="addcron" onclick="formVisibility();">add cron job</button>
     <br/>
-    <form id="addcronform" action="/job" method="post" name="addcronform" style="display:none" accept-charset="utf-8">
+    <form id="addcronform" action="/add_job" method="post" name="addcronform" style="display:none" accept-charset="utf-8" enctype="application/x-www-form-urlencoded">
         <table>
             <tr>
                 <td><label for="minute">Minute</label></td>
@@ -108,16 +123,16 @@ dcron console
                 <td><input id="hour" name="hour" value="*"/></td>
             </tr>
             <tr>
-                <td><label for="dayofmonth">Day of month</label></td>
-                <td><input id="dayofmonth" name="dayofmonth" value="*"/></td>
+                <td><label for="dom">Day of month</label></td>
+                <td><input id="dom" name="dom" value="*"/></td>
             </tr>
             <tr>
                 <td><label for="month">Month</label></td>
                 <td><input id="month" name="month" value="*"/></td>
             </tr>
             <tr>
-                <td><label for="dayofweek">Day of week</label></td>
-                <td><input id="dayofweek" name="dayofweek" value="*"/></td>
+                <td><label for="dow">Day of week</label></td>
+                <td><input id="dow" name="dow" value="*"/></td>
             </tr>
             <tr>
                 <td><label for="command">Command</label></td>

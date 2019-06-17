@@ -29,9 +29,14 @@ import sys
 
 from setuptools import setup
 
-version = "0.8.7"
+version = "0.9.1"
 
-requirements = ['aiohttp', 'aiofiles', 'aiohttp_jinja2', 'ntplib', 'psutil']
+requirements = ['aiohttp',
+                'aiofiles',
+                'aiohttp_jinja2',
+                'ntplib',
+                'psutil',
+                'python-dateutil']
 
 test_requirements = ['pytest', 'tox']
 

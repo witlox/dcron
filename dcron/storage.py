@@ -25,50 +25,51 @@
 
 import asyncio
 import logging
-import pickle
+import json
+
+from datetime import datetime
+from dateutil import parser
+from json import JSONEncoder, JSONDecoder
 
 from os.path import join, exists
 
 import aiofiles
 
-from dcron.protocols import Packet, group
-from dcron.protocols.cronjob import CronJob, RemoveCronJob
-from dcron.protocols.rebalance import Rebalance
-from dcron.protocols.status import StatusMessage
+from dcron.cron.cronitem import CronItem
+from dcron.cron.crontab import CronTab
+from dcron.protocols.messages import Status
 
 
-class Storage:
+class Storage(object):
+    """
+    Our storage abstraction
+    """
 
     logger = logging.getLogger(__name__)
-
-    queue = asyncio.Queue()
-
-    _buffer = []
-
-    _cluster_status = {}
-    _cluster_jobs = []
 
     def __init__(self, path_prefix=None):
         """
         our storage class
         :param path_prefix: directory where to save our storage
         """
+        self.cluster_status = []
+        self.cluster_jobs = []
         self.path_prefix = path_prefix
         if self.path_prefix:
-            path = join(self.path_prefix, 'cluster_status.pickle')
+            path = join(self.path_prefix, 'cluster_status.json')
             if not exists(path):
                 self.logger.info("no previous cache detected on {0}".format(path))
                 return
             self.logger.debug("loading cache from {0}".format(path))
-            with open(path, 'rb') as handle:
-                self._cluster_status = pickle.load(handle)
-            path = join(self.path_prefix, 'cluster_jobs.pickle')
+            with open(path, 'r') as handle:
+                self.cluster_status = json.loads(handle.readline(), cls=CronDecoder)
+            path = join(self.path_prefix, 'cluster_jobs.json')
             if not exists(path):
                 self.logger.info("no previous cache detected on {0}".format(path))
                 return
             self.logger.debug("loading cache from {0}".format(path))
-            with open(path, 'rb') as handle:
-                self._cluster_jobs = pickle.load(handle)
+            with open(path, 'r') as handle:
+                self.cluster_jobs = json.loads(handle.readline(), cls=CronDecoder)
 
     async def save(self):
         """
@@ -76,74 +77,26 @@ class Storage:
         """
         self.logger.debug("auto-save")
         if self.path_prefix:
-            path = join(self.path_prefix, 'cluster_status.pickle')
+            path = join(self.path_prefix, 'cluster_status.json')
             self.logger.debug("saving status cache to {0}".format(path))
-            async with aiofiles.open(path, 'wb') as handle:
-                await handle.write(pickle.dumps(self._cluster_status))
-            path = join(self.path_prefix, 'cluster_jobs.pickle')
+            async with aiofiles.open(path, 'w') as handle:
+                await handle.write(json.dumps(self.cluster_status, cls=CronEncoder))
+            path = join(self.path_prefix, 'cluster_jobs.json')
             self.logger.debug("saving job cache to {0}".format(path))
-            async with aiofiles.open(path, 'wb') as handle:
-                await handle.write(pickle.dumps(self._cluster_jobs))
+            async with aiofiles.open(path, 'w') as handle:
+                await handle.write(json.dumps(self.cluster_jobs, cls=CronEncoder))
         else:
             self.logger.warning("no path specified for cache, cannot save")
             await asyncio.sleep(0.1)
 
-    async def process(self):
+    def prune(self):
         """
-        processor for our queue
+        clean up our memory when it exceeds a given amount of values
         """
-        data = await self.queue.get()
-        logging.debug("got {0} on processor queue".format(data))
-        packet = Packet.decode(data)
-        if packet:
-            def clean_buffer(i, g):
-                self.logger.debug("removing message {0} from buffer".format(i))
-                for p in g[i]:
-                    self._buffer.remove(p)
-            self._buffer.append(packet)
-            packet_groups = group(self._buffer)
-            for uuid in packet_groups.keys():
-                self.logger.debug("identifying packet group for {0}".format(uuid))
-                if StatusMessage.load(packet_groups[uuid]):
-                    status_message = StatusMessage.load(packet_groups[uuid])
-                    self.logger.debug("got full status message in buffer ({0}".format(status_message))
-                    if status_message.ip not in self._cluster_status.keys():
-                        self._cluster_status[status_message.ip] = []
-                    self._cluster_status[status_message.ip].append(status_message)
-                    clean_buffer(uuid, packet_groups)
-                elif Rebalance.load(packet_groups[uuid]):
-                    self.logger.info("rebalance received")
-                    self._cluster_jobs.clear()
-                    clean_buffer(uuid, packet_groups)
-                elif RemoveCronJob.load(packet_groups[uuid]):
-                    details = RemoveCronJob.load(packet_groups[uuid])
-                    remove_cron_job = CronJob(minute=details.minute,
-                                              hour=details.hour,
-                                              day_of_month=details.day_of_month,
-                                              month=details.month,
-                                              day_of_week=details.day_of_week,
-                                              command=details.command)
-                    self.logger.debug("got full removecronjob in buffer ({0}".format(remove_cron_job))
-                    if remove_cron_job in self._cluster_jobs:
-                        self._cluster_jobs.remove(remove_cron_job)
-                    clean_buffer(uuid, packet_groups)
-                elif CronJob.load(packet_groups[uuid]):
-                    cron_job = CronJob.load(packet_groups[uuid])
-                    self.logger.debug("got full cronjob in buffer ({0}".format(cron_job))
-                    if cron_job not in self._cluster_jobs:
-                        self._cluster_jobs.append(cron_job)
-                    else:
-                        for job in self._cluster_jobs:
-                            if job == cron_job and (job.last_exit_code != cron_job.last_exit_code or job.last_std_out != cron_job.last_std_out or job.last_std_err != cron_job.last_std_err):
-                                self.logger.debug("job contents updated for {0}".format(job.command))
-                                job.last_exit_code = cron_job.last_exit_code
-                                job.last_std_out = cron_job.last_std_out
-                                job.last_std_err = cron_job.last_std_err
-                    clean_buffer(uuid, packet_groups)
-        if len(self._cluster_status.values()) >= 10000000:
+        if len(self.cluster_status) >= 10000000:
             self.logger.debug("pruning memory")
-            for ip in self._cluster_status.keys():
-                states = self._cluster_status[ip]
+            for ip in [status.ip for status in self.cluster_status]:
+                states = self.cluster_status[ip]
                 previous_status = None
                 prune_list = []
                 for index, status in enumerate(sorted(states, key=lambda x: x.time)):
@@ -153,16 +106,7 @@ class Storage:
                         previous_status = status
                 for index in sorted(prune_list, reverse=True):
                     self.logger.debug("pruning memory: index {0}".format(index))
-                    del (self._cluster_status[ip][index])
-        self.queue.task_done()
-
-    def put_nowait(self, packet):
-        """
-        put UDP packets on our queue for processing
-        :param packet: UDP packet
-        """
-        self.queue.put_nowait(packet)
-        asyncio.create_task(self.process())
+                    del (self.cluster_status[index])
 
     def node_state(self, ip):
         """
@@ -170,9 +114,10 @@ class Storage:
         :param ip: ip of the node
         :return: last known state
         """
-        if ip not in self._cluster_status.keys():
+        node_status = [status for status in self.cluster_status if status.ip == ip]
+        if len(node_status) == 0:
             return None
-        sorted_status = sorted(self._cluster_status[ip], key=lambda s: s.time, reverse=True)
+        sorted_status = sorted(node_status, key=lambda s: s.time, reverse=True)
         if not sorted_status:
             return None
         return sorted_status[0]
@@ -182,24 +127,85 @@ class Storage:
         get state of all known nodes of the cluster
         :return: generator of node states
         """
-        for ip in self._cluster_status.keys():
+        for ip in set([status.ip for status in self.cluster_status]):
             yield self.node_state(ip)
 
-    def cron_jobs(self):
-        """
-        get scheduled for the cluster
-        :return: generator of cron jobs
-        """
-        for cron_job in self._cluster_jobs:
-            yield cron_job
 
-    def update_job_state(self, job):
-        """
-        update state of existing cron job
-        :param job: CronJob
-        """
-        for cron_job in self._cluster_jobs:
-            if cron_job == job:
-                cron_job.last_exit_code = job.last_exit_code
-                cron_job.last_std_out = job.last_std_out
-                cron_job.last_std_err = job.last_std_err
+DATE_FORMAT = "%Y-%m-%d"
+TIME_FORMAT = "%H:%M:%S"
+
+
+class CronEncoder(JSONEncoder):
+
+    def default(self, o):
+        if isinstance(o, CronItem):
+            last_run = ''
+            if o.last_run and isinstance(o.last_run, datetime):
+                last_run = o.last_run.strftime("{} {}".format(DATE_FORMAT, TIME_FORMAT))
+            return {
+                '_type': 'CronItem',
+                'cron': json.dumps(o.cron, cls=CronEncoder),
+                'user': json.dumps(o.user),
+                'enabled': o.enabled,
+                'comment': o.comment,
+                'command': o.command,
+                'last_run': last_run,
+                'assigned_to': o.assigned_to,
+                'log': o._log,
+                'parts': str(o.parts)
+            }
+        elif isinstance(o, CronTab):
+            return {
+                '_type': 'CronTab',
+                'user': o.user,
+                'tab': o.in_tab,
+                'tabfile': o._tabfile,
+                'log': o._log
+            }
+        elif isinstance(o, Status):
+            time = ''
+            if o.time:
+                time = o.time.strftime("{} {}".format(DATE_FORMAT, TIME_FORMAT))
+            return {
+                '_type': 'status',
+                'ip': o.ip,
+                'state': o.state,
+                'load': o.system_load,
+                'time': time
+            }
+        return JSONEncoder.default(self, o)
+
+
+class CronDecoder(JSONDecoder):
+
+    def __init__(self, *args, **kwargs):
+        json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
+
+    @staticmethod
+    def object_hook(obj):
+        if '_type' not in obj:
+            return obj
+        if obj['_type'] == 'CronItem':
+            cron = json.loads(obj['cron'], cls=CronDecoder)
+            user = json.loads(obj['user'])
+            cron_item = CronItem(command=obj['command'], user=user, cron=cron)
+            cron_item.enable(obj['enabled'])
+            cron_item.comment = obj['comment']
+            cron_item.assigned_to = obj['assigned_to']
+            cron_item._log = obj['log']
+            if obj['last_run'] != '':
+                cron_item.last_run = parser.parse(obj['last_run'])
+            cron_item.set_all(obj['parts'])
+            return cron_item
+        elif obj['_type'] == 'CronTab':
+            return CronTab(user=obj['user'], tab=obj['tab'], tabfile=obj['tabfile'], log=obj['log'])
+        elif obj['_type'] == 'status':
+            status = Status()
+            status.system_load = obj['load']
+            status.state = obj['state']
+            status.ip = obj['ip']
+            if obj['time'] != '':
+                status.time = parser.parse(obj['time'])
+            return status
+        return obj
+

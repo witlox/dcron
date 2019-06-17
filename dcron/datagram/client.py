@@ -47,3 +47,13 @@ def client(port, data):
         logger.warning("failed to send data to port {0}".format(port))
 
     udp_socket.close()
+
+
+def broadcast(udp_port, packets):
+    """
+    broadcast a bunch of packets to a UDP port
+    :param udp_port: port to broadcast to
+    :param packets: packets to send
+    """
+    for packet in packets:
+        client(udp_port, packet)

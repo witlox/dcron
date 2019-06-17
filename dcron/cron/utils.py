@@ -23,14 +23,34 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from dcron.protocols.base import Serializable
+import re
 
+items_regex = re.compile(r'^\s*([^@#\s]+)\s+([^@#\s]+)\s+([^@#\s]+)\s+([^@#\s]+)'
+                         r'\s+([^@#\s]+)\s+([^\n]*?)(\s+#\s*([^\n]*)|$)')
+special_regex = re.compile(r'^\s*@(\w+)\s([^#\n]*)(\s+#\s*([^\n]*)|$)')
 
-class Rebalance(Serializable):
+WEEK_ENUM = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
-    @staticmethod
-    def load(data):
-        obj = Serializable.load(data)
-        if obj and isinstance(obj, Rebalance):
-            return obj
-        return None
+MONTH_ENUM = [None, 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug',
+              'sep', 'oct', 'nov', 'dec']
+
+SPECIALS = {"reboot":   '@reboot',
+            "hourly":   '0 * * * *',
+            "daily":    '0 0 * * *',
+            "weekly":   '0 0 * * 0',
+            "monthly":  '0 0 1 * *',
+            "yearly":   '0 0 1 1 *',
+            "annually": '0 0 1 1 *',
+            "midnight": '0 0 * * *'}
+
+SPECIAL_IGNORE = ['midnight', 'annually']
+
+S_INFO = [
+    {'max': 59, 'min': 0, 'name': 'Minutes'},
+    {'max': 23, 'min': 0, 'name': 'Hours'},
+    {'max': 31, 'min': 1, 'name': 'Day of Month'},
+    {'max': 12, 'min': 1, 'name': 'Month', 'enum': MONTH_ENUM},
+    {'max': 6, 'min': 0, 'name': 'Day of Week', 'enum': WEEK_ENUM},
+]
+
+cron_cmd = "/usr/bin/crontab"

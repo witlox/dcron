@@ -23,6 +23,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import tests.test_datagram
+import tests.test_processor
 import tests.test_protocols
+import tests.test_scheduler
 import tests.test_storage

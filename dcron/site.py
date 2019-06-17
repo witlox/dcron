@@ -22,7 +22,8 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-import json
+
+import logging
 import pathlib
 
 import jinja2
@@ -30,11 +31,18 @@ import jinja2
 from aiohttp import web
 import aiohttp_jinja2 as aiohttp_jinja2
 
-from dcron.datagram.client import client
-from dcron.protocols.cronjob import CronJob, RemoveCronJob
+from dcron.cron.cronitem import CronItem
+from dcron.datagram.client import broadcast
+from dcron.protocols.messages import Kill, Run
+from dcron.protocols.udpserializer import UdpSerializer
 
 
-class Site:
+class Site(object):
+    """
+    Minimalistic Web UI
+    """
+
+    logger = logging.getLogger(__name__)
 
     root = pathlib.Path(__file__).parent
 
@@ -45,16 +53,13 @@ class Site:
         aiohttp_jinja2.setup(self.app, loader=jinja2.PackageLoader('dcron', 'templates'))
         self.app.router.add_static('/static/', path=self.root/'static', name='static')
         self.app.add_routes([web.get('/', self.get)])
-        self.app.add_routes([web.get('/nodes', self.get_nodes)])
-        self.app.add_routes([web.get('/jobs', self.get_jobs)])
-        self.app.add_routes([web.post('/joblog', self.get_job_log)])
-        self.app.add_routes([web.post('/kill_job', self.kill_job)])
-        self.app.add_routes([web.post('/job', self.add_job)])
+        self.app.add_routes([web.get('/list_nodes', self.get_nodes)])
+        self.app.add_routes([web.get('/list_jobs', self.get_jobs)])
+        self.app.add_routes([web.post('/add_job', self.add_job)])
         self.app.add_routes([web.post('/remove_job', self.remove_job)])
-
-    def broadcast(self, packets):
-        for packet in packets:
-            client(self.udp_port, packet)
+        self.app.add_routes([web.post('/get_job_log', self.get_job_log)])
+        self.app.add_routes([web.post('/kill_job', self.kill_job)])
+        self.app.add_routes([web.post('/run_job', self.run_job)])
 
     @aiohttp_jinja2.template('index.html')
     async def get(self, request):
@@ -66,132 +71,116 @@ class Site:
 
     @aiohttp_jinja2.template('jobstable.html')
     async def get_jobs(self, request):
-        return dict(jobs=self.storage.cron_jobs())
+        return dict(jobs=self.storage.cluster_jobs)
 
     @aiohttp_jinja2.template('joblogs.html')
     async def get_job_log(self, request):
         data = await request.post()
 
+        self.logger.debug("received log request {0}".format(data))
+
         if 'command' not in data or \
                 'minute' not in data or \
                 'hour' not in data or \
-                'dayofmonth' not in data or \
+                'dom' not in data or \
                 'month' not in data or \
-                'dayofweek' not in data:
+                'dow' not in data:
             return web.Response(status=500, text='not all mandatory fields submitted')
 
-        minute = None
-        hour = None
-        day_of_month = None
-        month = None
-        day_of_week = None
+        cron_item = self.generate_cron_item(data)
 
-        if data['minute'] != 'None':
-            minute = int(data['minute'])
-        if data['hour'] != 'None':
-            hour = int(data['hour'])
-        if data['dayofmonth'] != 'None':
-            day_of_month = int(data['dayofmonth'])
-        if data['month'] != 'None':
-            month = int(data['month'])
-        if data['dayofweek'] != 'None':
-            day_of_week = int(data['dayofweek'])
+        self.logger.debug("returning log result")
 
-        cron_job = CronJob(minute, hour, day_of_month, month, day_of_week, data['command'])
-
-        for job in self.storage.cron_jobs():
-            if job == cron_job:
+        for job in self.storage.cluster_jobs:
+            if job == cron_item:
                 return dict(job=job)
-        return dict(job=cron_job)
+        return dict(job=cron_item)
 
     async def kill_job(self, request):
         data = await request.post()
 
+        self.logger.debug("received kill request {0}".format(data))
+
         if 'command' not in data or \
                 'minute' not in data or \
                 'hour' not in data or \
-                'dayofmonth' not in data or \
+                'dom' not in data or \
                 'month' not in data or \
-                'dayofweek' not in data:
+                'dow' not in data:
             return web.Response(status=500, text='not all mandatory fields submitted')
 
-        minute = None
-        hour = None
-        day_of_month = None
-        month = None
-        day_of_week = None
+        self.logger.debug("broadcasting kill result")
 
-        if data['minute'] != 'None':
-            minute = int(data['minute'])
-        if data['hour'] != 'None':
-            hour = int(data['hour'])
-        if data['dayofmonth'] != 'None':
-            day_of_month = int(data['dayofmonth'])
-        if data['month'] != 'None':
-            month = int(data['month'])
-        if data['dayofweek'] != 'None':
-            day_of_week = int(data['dayofweek'])
+        broadcast(self.udp_port, UdpSerializer.dump(Kill(self.generate_cron_item(data))))
 
-        cron_job = CronJob(minute, hour, day_of_month, month, day_of_week, data['command'])
+        raise web.HTTPFound('/')
 
-        for job in self.storage.cron_jobs():
-            if job == cron_job:
-                job.kill()
+    async def run_job(self, request):
+        data = await request.post()
+
+        self.logger.debug("received run request {0}".format(data))
+
+        if 'command' not in data or \
+                'minute' not in data or \
+                'hour' not in data or \
+                'dom' not in data or \
+                'month' not in data or \
+                'dow' not in data:
+            return web.Response(status=500, text='not all mandatory fields submitted')
+
+        self.logger.debug("broadcasting run result")
+
+        broadcast(self.udp_port, UdpSerializer.dump(Run(self.generate_cron_item(data))))
+
+        raise web.HTTPFound('/')
 
     async def add_job(self, request):
         data = await request.post()
 
+        self.logger.debug("received add request {0}".format(data))
+
         if 'command' not in data or \
                 'minute' not in data or \
                 'hour' not in data or \
-                'dayofmonth' not in data or \
+                'dom' not in data or \
                 'month' not in data or \
-                'dayofweek' not in data:
+                'dow' not in data:
             return web.Response(status=500, text='not all mandatory fields submitted via form')
 
-        new_job = CronJob(command=data['command'])
-        if not data['minute'] == '*':
-            new_job.minute = int(data['minute'])
-        if not data['hour'] == '*':
-            new_job.hour = int(data['hour'])
-        if not data['dayofmonth'] == '*':
-            new_job.day_of_month = int(data['dayofmonth'])
-        if not data['month'] == '*':
-            new_job.month = int(data['month'])
-        if not data['dayofweek'] == '*':
-            new_job.day_of_week = int(data['dayofweek'])
-        self.broadcast(new_job.dump())
+        self.logger.debug("broadcasting add result")
+
+        broadcast(self.udp_port, UdpSerializer.dump(self.generate_cron_item(data)))
 
         raise web.HTTPFound('/')
 
     async def remove_job(self, request):
         data = await request.post()
 
+        self.logger.debug("received remove request {0}".format(data))
+
         if 'command' not in data or \
                 'minute' not in data or \
                 'hour' not in data or \
-                'dayofmonth' not in data or \
+                'dom' not in data or \
                 'month' not in data or \
-                'dayofweek' not in data:
+                'dow' not in data:
             return web.Response(status=500, text='not all mandatory fields submitted')
 
-        minute = None
-        hour = None
-        day_of_month = None
-        month = None
-        day_of_week = None
+        self.logger.debug("broadcasting remove result")
 
-        if data['minute'] != 'None':
-            minute = int(data['minute'])
-        if data['hour'] != 'None':
-            minute = int(data['hour'])
-        if data['dayofmonth'] != 'None':
-            minute = int(data['dayofmonth'])
-        if data['month'] != 'None':
-            minute = int(data['month'])
-        if data['dayofweek'] != 'None':
-            minute = int(data['dayofweek'])
-
-        self.broadcast(RemoveCronJob(minute, hour, day_of_month, month, day_of_week, data['command']).dump())
+        broadcast(self.udp_port, UdpSerializer.dump(self.generate_cron_item(data, removable=True)))
 
         raise web.HTTPFound('/')
+
+    def generate_cron_item(self, data, removable=False):
+
+        cron_item = CronItem(command=data['command'])
+        cron_item.remove = removable
+
+        pattern = '{0} {1} {2} {3} {4}'.format(data['minute'], data['hour'], data['dom'], data['month'], data['dow'])
+
+        self.logger.debug("adding pattern {0} to job".format(pattern))
+
+        cron_item.set_all(pattern)
+
+        return cron_item

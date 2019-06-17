@@ -33,14 +33,16 @@ from datetime import datetime
 
 from aiohttp.web_runner import AppRunner, TCPSite
 
-from dcron.datagram.client import client
+from dcron.cron.crontab import CronTab
+from dcron.datagram.client import client, broadcast
 from dcron.datagram.server import StatusProtocolServer
-from dcron.protocols.rebalance import Rebalance
-from dcron.protocols.status import StatusMessage
+from dcron.processor import Processor
+from dcron.protocols.messages import ReBalance, Status
+from dcron.protocols.udpserializer import UdpSerializer
 from dcron.scheduler import Scheduler
 from dcron.site import Site
 from dcron.storage import Storage
-from dcron.utils import get_ip, get_ntp_offset, get_load
+from dcron.utils import get_ip, get_ntp_offset, get_load, check_process
 
 log_format = "%(asctime)s [%(levelname)-8.8s] %(message)s"
 logging.basicConfig(level=logging.INFO, format=log_format)
@@ -48,11 +50,16 @@ logger = logging.getLogger('dcron')
 
 
 def main():
+    """
+    entry point
+    """
     parser = argparse.ArgumentParser(description='Distributed Cronlike Scheduler')
 
     parser.add_argument('-l', '--log-file', default=None, help='path to store logfile')
     parser.add_argument('-p', '--storage-path', default=None, help='directory where to store cache')
-    parser.add_argument('-c', '--communication-port', type=int, default=12345, help='communication port (default: 12345)')
+    parser.add_argument('-u', '--udp-communication-port', type=int, default=12345, help='communication port (default: 12345)')
+    parser.add_argument('-c', '--cron', default=None, help='crontab to use (default: /etc/crontab, use `memory` to not save to file')
+    parser.add_argument('-d', '--cron-user', default=None, help='user to user for storing cron entries')
     parser.add_argument('-w', '--web-port', type=int, default=8080, help='web hosting port (default: 8080)')
     parser.add_argument('-n', '--ntp-server', default='pool.ntp.org', help='NTP server to detect clock skew (default: pool.ntp.org)')
     parser.add_argument('-s', '--node-staleness', type=int, default=180, help='Time in seconds of non-communication for a node to be marked as stale (defailt: 180s)')
@@ -77,34 +84,50 @@ def main():
     pool = ThreadPoolExecutor(4)
 
     storage = Storage(args.storage_path)
+    if args.cron:
+        if args.cron == 'memory':
+            processor = Processor(args.udp_communication_port, storage, cron=CronTab(tab="""* * * * * command"""))
+        elif args.cron_user:
+            processor = Processor(args.udp_communication_port, storage, cron=CronTab(tabfile=args.cron, user=args.cron_user))
+        else:
+            processor = Processor(args.udp_communication_port, storage, cron=CronTab(tabfile=args.cron, user=False))
+    else:
+        processor = Processor(args.udp_communication_port, storage)
 
-    with StatusProtocolServer(storage, args.communication_port) as loop:
+    with StatusProtocolServer(processor, args.udp_communication_port) as loop:
 
         running = True
 
         scheduler = Scheduler(storage, args.node_staleness)
 
         def timed_broadcast():
+            """
+            periodically broadcast system status and known jobs
+            """
             while running:
                 time.sleep(5)
-                packets = StatusMessage(get_ip(), get_load()).dump()
-                for packet in packets:
-                    client(args.communication_port, packet)
-                for job in storage.cron_jobs():
-                    for packet in job.dump():
-                        client(args.communication_port, packet)
+                broadcast(args.udp_communication_port, UdpSerializer.dump(Status(get_ip(), get_load())))
+                for job in storage.cluster_jobs:
+                    if job.assigned_to == get_ip():
+                        job.pid = check_process(job.command)
+                    for packet in UdpSerializer.dump(job):
+                        client(args.udp_communication_port, packet)
 
         def timed_schedule():
+            """
+            periodically check if cluster needs re-balancing
+            """
             while running:
-                time.sleep(60)
+                time.sleep(23)
                 if not scheduler.check_cluster_state():
-                    logger.info("rebalanced cluster")
-                    jobs = list(storage.cron_jobs()).copy()
-                    for packet in Rebalance().dump():
-                        client(args.communication_port, packet)
+                    logger.info("re-balancing cluster")
+                    jobs = storage.cluster_jobs.copy()
+                    for packet in UdpSerializer.dump(ReBalance(timestamp=datetime.now())):
+                        client(args.udp_communication_port, packet)
+                    time.sleep(5)
                     for job in jobs:
-                        for packet in job.dump():
-                            client(args.communication_port, packet)
+                        for packet in UdpSerializer.dump(job):
+                            client(args.udp_communication_port, packet)
 
         async def scheduled_broadcast():
             await loop.run_in_executor(pool, timed_broadcast)
@@ -112,25 +135,22 @@ def main():
         async def scheduled_rebalance():
             await loop.run_in_executor(pool, timed_schedule)
 
-        async def scheduled_schedule():
-            while running:
-                await scheduler.check_jobs(datetime.utcnow())
-                await asyncio.sleep(60)
-
         async def save_schedule():
+            """
+            auto save every 100 seconds
+            """
             while running:
                 await asyncio.sleep(100)
                 await storage.save()
 
         loop.create_task(scheduled_broadcast())
         loop.create_task(scheduled_rebalance())
-        loop.create_task(scheduled_schedule())
         if args.storage_path:
             loop.create_task(save_schedule())
 
         logger.info("starting web application server on http://{0}:{1}/".format(get_ip(), args.web_port))
 
-        s = Site(storage, args.communication_port)
+        s = Site(storage, args.udp_communication_port)
         runner = AppRunner(s.app)
         loop.run_until_complete(runner.setup())
         site_instance = TCPSite(runner, port=args.web_port)
