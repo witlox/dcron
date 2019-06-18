@@ -339,8 +339,6 @@ class CronItem(object):
 
         if not self.enabled:
             result = "# " + result
-        if self.assigned_to:
-            result += "assigned to {0}".format(self.assigned_to)
         return str(self.env) + result
 
 

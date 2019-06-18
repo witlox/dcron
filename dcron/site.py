@@ -71,7 +71,7 @@ class Site(object):
 
     @aiohttp_jinja2.template('jobstable.html')
     async def get_jobs(self, request):
-        return dict(jobs=sorted(self.storage.cluster_jobs, key=lambda j: j.command))
+        return dict(jobs=sorted(self.storage.cluster_jobs, key=lambda j: (j.command, j.ip)))
 
     @aiohttp_jinja2.template('joblogs.html')
     async def get_job_log(self, request):
