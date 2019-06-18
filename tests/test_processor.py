@@ -57,3 +57,34 @@ def test_message_deserialization_and_assignment():
     assert None is not next(tab.find_command(command), None)
 
     loop.close()
+
+
+def test_add_same_job_twice_adds_cron_once():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    command = "echo 'hello world'"
+    cron_job = CronItem(command=command)
+    cron_job.assigned_to = get_ip()
+
+    storage = Storage()
+
+    tab = CronTab(tab="""* * * * * command""")
+    processor = Processor(12345, storage, cron=tab)
+
+    for packet in UdpSerializer.dump(cron_job):
+        processor.queue.put_nowait(packet)
+
+    for packet in UdpSerializer.dump(cron_job):
+        processor.queue.put_nowait(packet)
+
+    loop.run_until_complete(processor.process())
+
+    assert 1 == len(storage.cluster_jobs)
+
+    assert command == storage.cluster_jobs[0].command
+
+    assert None is not next(tab.find_command(command), None)
+    assert 1 == len(list(tab.find_command(command)))
+
+    loop.close()

@@ -23,9 +23,9 @@
             {% endif %}
             <td width="7%">{% if job.minute %}{{ job.minute }}{% else %} * {% endif %}</td>
             <td width="7%">{% if job.hour %}{{ job.hour }}{% else %} * {% endif %}</td>
-            <td width="7%">{% if job.day_of_month %}{{ job.day_of_month }}{% else %} * {% endif %}</td>
+            <td width="7%">{% if job.dom %}{{ job.dom }}{% else %} * {% endif %}</td>
             <td width="7%">{% if job.month %}{{ job.month }}{% else %} * {% endif %}</td>
-            <td width="7%">{% if job.day_of_week %}{{ job.day_of_week }}{% else %} * {% endif %}</td>
+            <td width="7%">{% if job.dow %}{{ job.dow }}{% else %} * {% endif %}</td>
             <td width="50%" align="left">{% if job.command %}{{ job.command }}{% else %} * {% endif %}</td>
             <td width="10%">{% if job.assigned_to %}{{ job.assigned_to }}{% else %} * {% endif %}</td>
             <td width="2%"><button type="button" onclick="jobLog(this);" data-cmd="minute:{{ job.minute }},hour:{{job.hour}},dom:{{ job.dom }},month:{{ job.month }},dow:{{ job.dow }},command:{{ job.command }}">?</button></td>

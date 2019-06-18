@@ -67,11 +67,11 @@ class Site(object):
 
     @aiohttp_jinja2.template('nodestable.html')
     async def get_nodes(self, request):
-        return dict(nodes=self.storage.cluster_state())
+        return dict(nodes=sorted(self.storage.cluster_state(), key=lambda n: n.ip))
 
     @aiohttp_jinja2.template('jobstable.html')
     async def get_jobs(self, request):
-        return dict(jobs=self.storage.cluster_jobs)
+        return dict(jobs=sorted(self.storage.cluster_jobs, key=lambda j: j.command))
 
     @aiohttp_jinja2.template('joblogs.html')
     async def get_job_log(self, request):
