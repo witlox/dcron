@@ -15,13 +15,3 @@ Please check the [docs](https://dcron.readthedocs.io) regarding installation, co
 ## Installation
 
 ``pip install dcron``
-
-## Options
-
-- -l or --log-file: by default we only log to stdout/stderr, specify a path and a log file will be created
-- -p or --storage-path: we cache our stuff directly in memory, if you wan't your runtime configuration to be saved, specify a folder here
-- -c or --communication-port: udp broadcast is used for synchronization between nodes, specify a port here (default: 12345)
-- -w or --web-port: port to host the web interface (default: 8080)
-- -n or --ntp-server: given that we are doing cron, we need time sync to be relatively close, if skewed, we break (default: pool.ntp.org) 
-- -s or --node-staleness: after x seconds of inactivity a node is marked stale and jobs are redistributed over active nodes
-- -v or --verbose: more logging

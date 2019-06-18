@@ -29,7 +29,7 @@ import sys
 
 from setuptools import setup
 
-version = "0.9.1"
+version = "0.9.2"
 
 requirements = ['aiohttp',
                 'aiofiles',
@@ -75,6 +75,7 @@ setup(name="dcron",
       },
       packages=[
           "dcron",
+          "dcron.cron",
           "dcron.datagram",
           "dcron.protocols"
       ],
