@@ -24,6 +24,7 @@
 # SOFTWARE.
 
 from datetime import time, date
+from tempfile import NamedTemporaryFile
 
 from dcron.cron import crontab
 from dcron.cron.cronitem import CronDateTimeParts
@@ -34,13 +35,13 @@ USER = '\n*/4 * * * ...comment\n\n\n'
 
 def test_empty_tab():
     cron = crontab.CronTab()
-    assert "" == cron.render()
+    assert "" == str(cron)
     assert not cron.state().attached
 
 
 def test_user_tab():
     cron = crontab.CronTab(user='basic', tab=BASIC)
-    assert BASIC == cron.render()
+    assert BASIC == str(cron)
     assert cron.state().user == 'basic'
 
 
@@ -82,3 +83,16 @@ def test_slice_validation():
     assert cron_slices.is_valid('* * * * MON-WED')
     assert cron_slices.is_valid('@reboot')
 
+
+def test_cron_item_in_tab():
+    tabfile = NamedTemporaryFile()
+    cron = crontab.CronTab(tabfile=tabfile.name)
+    item = crontab.CronItem(command='test')
+    item.set_all(time(1, 2))
+    cron.append(item)
+    assert 1 == len(list(cron.find_command('test')))
+    cron.write()
+    with open(tabfile.name, 'r') as tf:
+        lines = tf.readlines()
+    assert 1 == len(lines)
+    assert 'test' in lines[0]

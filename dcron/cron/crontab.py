@@ -182,7 +182,7 @@ class CronTab(object):
                 self._parked_env = OrderedDict()
             self.lines.append(line.replace('\n', ''))
 
-    def write(self, filename=None, user=None, errors=False):
+    def write(self, filename=None, user=None):
         """
         Write the CronTab to it's source or a given filename.
         """
@@ -195,18 +195,18 @@ class CronTab(object):
 
         # Add to either the crontab or the internal tab.
         if self.in_tab is not None:
-            self.in_tab = self.render()
+            self.in_tab = str(self)
             # And that's it if we never saved to a file
             if not self.filename:
                 return
 
         if self.filename:
-            file_handle = open(self.filename, 'wb')
+            file_handle = open(self.filename, 'w')
         else:
             filed, path = tempfile.mkstemp()
-            file_handle = os.fdopen(filed, 'wb')
+            file_handle = os.fdopen(filed, 'w')
 
-        file_handle.write(self.render(errors=errors).encode('utf-8'))
+        file_handle.write(str(self))
         file_handle.close()
 
         if not self.filename:
@@ -233,32 +233,6 @@ class CronTab(object):
         Write the CronTab to a user (or root) instead of a file.
         """
         return self.write(user=user)
-
-    def render(self, errors=False):
-        """
-        Render this CronTab as it would be in the CronTab.
-        :param errors: Should we not comment out invalid entries
-        """
-        crons = []
-        for line in self.lines:
-            if isinstance(line, (str, str)):
-                if line.strip().startswith('#') or not line.strip():
-                    crons.append(line)
-                elif not errors:
-                    crons.append('# DISABLED LINE\n# ' + line)
-                else:
-                    raise ValueError("Invalid line: %s" % line)
-            elif isinstance(line, CronItem):
-                if not line.is_valid() and not errors:
-                    line.enabled = False
-                crons.append(str(line))
-
-        # Environment variables are attached to cron lines so order will
-        # always work no matter how you add lines in the middle of the stack.
-        result = str(self.env) + u'\n'.join(crons)
-        if result and result[-1] not in (u'\n', u'\r'):
-            result += u'\n'
-        return result
 
     def new(self, command='', comment='', user=None):
         """
@@ -408,5 +382,21 @@ class CronTab(object):
         return len(self.crons)
 
     def __str__(self):
-        return self.render()
+        crons = []
+        for line in self.lines:
+            if isinstance(line, (str, str)):
+                if line.strip().startswith('#') or not line.strip():
+                    crons.append(line)
+                else:
+                    crons.append('# DISABLED LINE\n# ' + line)
+            elif isinstance(line, CronItem):
+                if not line.is_valid():
+                    line.enabled = False
+                crons.append(str(line))
+        # Environment variables are attached to cron lines so order will
+        # always work no matter how you add lines in the middle of the stack.
+        result = str(self.env) + u'\n'.join(crons)
+        if result and result[-1] not in (u'\n', u'\r'):
+            result += u'\n'
+        return result
 

@@ -80,9 +80,13 @@ class Processor(object):
         job = next(iter([j for j in self.storage.cluster_jobs if j == new_job]), None)
         if not job:
             if new_job.assigned_to == get_ip():
-                self.logger.info("adding job {0} to cron {1}".format(new_job, self.cron))
-                self.cron.append(new_job)
-                self.cron.write()
+                existing_job = next(self.cron.find_command(new_job.command), None)
+                if existing_job and existing_job == new_job:
+                    self.logger.info("job already defined in tab, skipping it")
+                else:
+                    self.logger.info("adding job {0} to cron {1}".format(new_job, self.cron))
+                    self.cron.append(new_job)
+                    self.cron.write()
         else:
             idx = self.storage.cluster_jobs.index(job)
             del (self.storage.cluster_jobs[idx])
