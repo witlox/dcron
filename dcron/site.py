@@ -33,7 +33,7 @@ import aiohttp_jinja2 as aiohttp_jinja2
 
 from dcron.cron.cronitem import CronItem
 from dcron.datagram.client import broadcast
-from dcron.protocols.messages import Kill, Run
+from dcron.protocols.messages import Kill, Run, Toggle
 from dcron.protocols.udpserializer import UdpSerializer
 
 
@@ -60,6 +60,7 @@ class Site(object):
         self.app.add_routes([web.post('/get_job_log', self.get_job_log)])
         self.app.add_routes([web.post('/kill_job', self.kill_job)])
         self.app.add_routes([web.post('/run_job', self.run_job)])
+        self.app.add_routes([web.post('/toggle_job', self.toggle_job)])
 
     @aiohttp_jinja2.template('index.html')
     async def get(self, request):
@@ -134,6 +135,25 @@ class Site(object):
 
         raise web.HTTPFound('/')
 
+    async def toggle_job(self, request):
+        data = await request.post()
+
+        self.logger.debug("received toggle request {0}".format(data))
+
+        if 'command' not in data or \
+                'minute' not in data or \
+                'hour' not in data or \
+                'dom' not in data or \
+                'month' not in data or \
+                'dow' not in data:
+            return web.Response(status=500, text='not all mandatory fields submitted')
+
+        self.logger.debug("broadcasting run result")
+
+        broadcast(self.udp_port, UdpSerializer.dump(Toggle(self.generate_cron_item(data))))
+
+        raise web.HTTPFound('/')
+
     async def add_job(self, request):
         data = await request.post()
 
@@ -147,9 +167,14 @@ class Site(object):
                 'dow' not in data:
             return web.Response(status=500, text='not all mandatory fields submitted via form')
 
+        cron_item = self.generate_cron_item(data)
+
+        if 'disabled' in data:
+            cron_item.enable(False)
+
         self.logger.debug("broadcasting add result")
 
-        broadcast(self.udp_port, UdpSerializer.dump(self.generate_cron_item(data)))
+        broadcast(self.udp_port, UdpSerializer.dump(cron_item))
 
         raise web.HTTPFound('/')
 

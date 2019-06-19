@@ -30,7 +30,7 @@ from datetime import datetime
 from dcron.cron.crontab import CronTab, CronItem
 from dcron.datagram.client import broadcast
 from dcron.protocols import Packet, group
-from dcron.protocols.messages import Kill, ReBalance, Run, Status
+from dcron.protocols.messages import Kill, ReBalance, Run, Status, Toggle
 from dcron.protocols.udpserializer import UdpSerializer
 from dcron.utils import get_ip, check_process, kill_proc_tree
 
@@ -58,7 +58,7 @@ class Processor(object):
         self.storage.cluster_status.append(status_message)
 
     def remove_job(self, job):
-        self.logger.debug("got full remove in buffer ({0}".format(job))
+        self.logger.debug("got full remove in buffer {0}".format(job))
         if job in self.storage.cluster_jobs:
             self.logger.debug("removing existing job {0}".format(job))
             self.storage.cluster_jobs.remove(job)
@@ -77,7 +77,7 @@ class Processor(object):
                     self.logger.warning("defined job {0} not found in cron, but assigned to me!".format(job))
 
     def add_job(self, new_job):
-        self.logger.debug("got full job in buffer ({0}".format(new_job))
+        self.logger.debug("got full job in buffer {0}".format(new_job))
         job = next(iter([j for j in self.storage.cluster_jobs if j == new_job]), None)
         if not job:
             if new_job.assigned_to == get_ip():
@@ -97,8 +97,24 @@ class Processor(object):
             del (self.storage.cluster_jobs[idx])
         self.storage.cluster_jobs.append(new_job)
 
+    def toggle_job(self, toggle):
+        self.logger.debug("got full toggle in buffer {0}".format(toggle.job))
+        job = next(iter([j for j in self.storage.cluster_jobs if j == toggle.job]), None)
+        if job:
+            if job.assigned_to == get_ip():
+                self.logger.info("am owner for job {0}, toggling it".format(job))
+                job.enable(not job.is_enabled())
+                if self.user and not job.user:
+                    job.user = self.user
+                if self.cron and not job.cron:
+                    job.cron = self.cron
+                self.cron.write()
+                idx = self.storage.cluster_jobs.index(job)
+                del (self.storage.cluster_jobs[idx])
+                self.storage.cluster_jobs.append(job)
+
     async def run(self, run, uuid):
-        self.logger.debug("got full run in buffer ({0}".format(run.job))
+        self.logger.debug("got full run in buffer {0}".format(run.job))
         job = next(iter([j for j in self.storage.cluster_jobs if j == run.job]), None)
         if job and job.assigned_to == get_ip():
             self.logger.info("am owner for job {0}".format(job))
@@ -171,6 +187,9 @@ class Processor(object):
                         await self.run(obj, uuid)
                     elif isinstance(obj, Kill):
                         self.kill(obj)
+                        self.clean_buffer(uuid)
+                    elif isinstance(obj, Toggle):
+                        self.toggle_job(obj)
                         self.clean_buffer(uuid)
         self.storage.prune()
         self.queue.task_done()

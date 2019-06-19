@@ -39,6 +39,12 @@ class Run(object):
         self.job = job
 
 
+class Toggle(object):
+
+    def __init__(self, job):
+        self.job = job
+
+
 class Status(object):
 
     def __init__(self, ip=None, system_load=None):

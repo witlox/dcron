@@ -25,6 +25,21 @@
             elem.style.display = "none";
         }
     }
+    function toggleJob(elem) {
+        let kve = $(elem).data("cmd").split(',');
+        let request_data = {};
+        for (let i = 0; i < kve.length; i++) {
+            request_data[kve[i].split(':')[0]] = kve[i].split(':')[1];
+        }
+        $.ajax({
+            url: '/toggle_job',
+            data: request_data,
+            type: 'POST',
+            success: function (result) {
+                console.log(result);
+            }
+        });
+    }
     function removeJob(elem) {
         let kve = $(elem).data("cmd").split(',');
         let request_data = {};
@@ -137,6 +152,10 @@ dcron console
             <tr>
                 <td><label for="command">Command</label></td>
                 <td><input id="command" name="command" /></td>
+            </tr>
+            <tr>
+                <td><label for="disabled">Disabled</label></td>
+                <td><input id="disabled" type="checkbox" name="disabled" checked value="disabled"></td>
             </tr>
         </table>
         <br/>

@@ -1,15 +1,17 @@
 <table id="jobs" align="center">
     <thead>
         <tr>
-            <th width="7%">minute</th>
-            <th width="7%">hour</th>
-            <th width="7%">day of month</th>
-            <th width="7%">month</th>
-            <th width="7%">day of week</th>
+            <th width="3%">enabled</th>
+            <th width="6%">minute</th>
+            <th width="6%">hour</th>
+            <th width="6%">day of month</th>
+            <th width="6%">month</th>
+            <th width="6%">day of week</th>
             <th width="50%">command</th>
             <th width="10%">assigned to</th>
             <th width="2%">log</th>
             <th width="2%">run</th>
+            <th width="2%">tog</th>
             <th width="2%">del</th>
         </tr>
     </thead>
@@ -21,15 +23,17 @@
             {% else %}
         <tr>
             {% endif %}
-            <td width="7%">{% if job.minute %}{{ job.minute }}{% else %} * {% endif %}</td>
-            <td width="7%">{% if job.hour %}{{ job.hour }}{% else %} * {% endif %}</td>
-            <td width="7%">{% if job.dom %}{{ job.dom }}{% else %} * {% endif %}</td>
-            <td width="7%">{% if job.month %}{{ job.month }}{% else %} * {% endif %}</td>
-            <td width="7%">{% if job.dow %}{{ job.dow }}{% else %} * {% endif %}</td>
+            <td width="3%">{{ job.is_enabled() }}</td>
+            <td width="6%">{% if job.minute %}{{ job.minute }}{% else %} * {% endif %}</td>
+            <td width="6%">{% if job.hour %}{{ job.hour }}{% else %} * {% endif %}</td>
+            <td width="6%">{% if job.dom %}{{ job.dom }}{% else %} * {% endif %}</td>
+            <td width="6%">{% if job.month %}{{ job.month }}{% else %} * {% endif %}</td>
+            <td width="6%">{% if job.dow %}{{ job.dow }}{% else %} * {% endif %}</td>
             <td width="50%" align="left">{% if job.command %}{{ job.command }}{% else %} * {% endif %}</td>
             <td width="10%">{% if job.assigned_to %}{{ job.assigned_to }}{% else %} * {% endif %}</td>
             <td width="2%"><button type="button" onclick="jobLog(this);" data-cmd="minute:{{ job.minute }},hour:{{job.hour}},dom:{{ job.dom }},month:{{ job.month }},dow:{{ job.dow }},command:{{ job.command }}">?</button></td>
             <td width="2%"><button type="button" onclick="runJob(this);" data-cmd="minute:{{ job.minute }},hour:{{job.hour}},dom:{{ job.dom }},month:{{ job.month }},dow:{{ job.dow }},command:{{ job.command }}">></button></td>
+            <td width="2%"><button type="button" onclick="toggleJob(this);" data-cmd="minute:{{ job.minute }},hour:{{job.hour}},dom:{{ job.dom }},month:{{ job.month }},dow:{{ job.dow }},command:{{ job.command }}">#</button></td>
             <td width="2%"><button type="button" onclick="removeJob(this);" data-cmd="minute:{{ job.minute }},hour:{{job.hour}},dom:{{ job.dom }},month:{{ job.month }},dow:{{ job.dow }},command:{{ job.command }}">-</button></td>
         </tr>
         {% endfor %}
