@@ -92,7 +92,7 @@ def main():
         else:
             processor = Processor(args.udp_communication_port, storage, cron=CronTab(tabfile=args.cron, user=False), user='root')
     else:
-        processor = Processor(args.udp_communication_port, storage)
+        processor = Processor(args.udp_communication_port, storage, user='root')
 
     with StatusProtocolServer(processor, args.udp_communication_port) as loop:
 

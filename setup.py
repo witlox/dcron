@@ -29,7 +29,7 @@ import sys
 
 from setuptools import setup
 
-version = "0.9.9"
+version = "0.9.10"
 
 requirements = ['aiohttp',
                 'aiofiles',
