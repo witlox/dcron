@@ -27,6 +27,7 @@ import asyncio
 
 from dcron.cron.crontab import CronTab, CronItem
 from dcron.processor import Processor
+from dcron.protocols.messages import Run
 from dcron.protocols.udpserializer import UdpSerializer
 from dcron.storage import Storage
 from dcron.utils import get_ip
@@ -86,5 +87,38 @@ def test_add_same_job_twice_adds_cron_once():
 
     assert None is not next(tab.find_command(command), None)
     assert 1 == len(list(tab.find_command(command)))
+
+    loop.close()
+
+
+def test_manual_run_is_executed_exactly_once():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    command = "echo 'hello world'"
+    cron_job = CronItem(command=command)
+    cron_job.assigned_to = get_ip()
+
+    storage = Storage()
+
+    tab = CronTab(tab="""* * * * * command""")
+    processor = Processor(12345, storage, cron=tab)
+
+    for packet in UdpSerializer.dump(cron_job):
+        processor.queue.put_nowait(packet)
+
+    for packet in UdpSerializer.dump(Run(cron_job)):
+        processor.queue.put_nowait(packet)
+
+    loop.run_until_complete(processor.process())
+
+    assert 1 == len(storage.cluster_jobs)
+
+    assert command == storage.cluster_jobs[0].command
+
+    assert 1 == len(storage.cluster_jobs[0].log)
+    assert 'exit code: 0' in storage.cluster_jobs[0].log[0] and 'hello world' in storage.cluster_jobs[0].log[0]
+
+    assert processor.queue.empty()
 
     loop.close()

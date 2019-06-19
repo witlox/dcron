@@ -84,7 +84,7 @@ class Processor(object):
                 if existing_job and existing_job == new_job:
                     self.logger.info("job already defined in tab, skipping it")
                 else:
-                    self.logger.info("adding job {0} to cron {1}".format(new_job, self.cron))
+                    self.logger.info("adding job {0} to cron {1}".format(new_job, self.cron.filename))
                     self.cron.append(new_job)
                     self.cron.write()
         else:
@@ -92,7 +92,7 @@ class Processor(object):
             del (self.storage.cluster_jobs[idx])
         self.storage.cluster_jobs.append(new_job)
 
-    async def run(self, run):
+    async def run(self, run, uuid):
         self.logger.debug("got full run in buffer ({0}".format(run.job))
         job = next(iter([j for j in self.storage.cluster_jobs if j == run.job]), None)
         if job and job.assigned_to == get_ip():
@@ -107,6 +107,7 @@ class Processor(object):
             self.logger.info("output of {0} with code {1}: {2}".format(job.command, exit_code, std_out))
             job.append_log("{0:%b %d %H:%M:%S} localhost CRON[{1}] exit code: {2}, out: {3}, err: {4}".format(datetime.now(), process.pid, exit_code, std_out, std_err))
             broadcast(self.udp_port, UdpSerializer.dump(job))
+            self.clean_buffer(uuid)
 
     def kill(self, kill):
         if not kill.pid:
@@ -120,6 +121,17 @@ class Processor(object):
                 except ValueError:
                     self.logger.warning("got signal to kill self, that's not happening")
 
+    def clean_buffer(self, uuid):
+        """
+        remove packet groups from buffer
+        :param uuid: identifier for the group
+        """
+        self.logger.debug("removing message {0} from buffer".format(uuid))
+        g = group(self._buffer)
+        for p in g[uuid]:
+            if p in self._buffer:
+                self._buffer.remove(p)
+
     async def process(self):
         """
         processor for our queue
@@ -128,10 +140,6 @@ class Processor(object):
         logging.debug("got {0} on processor queue".format(data))
         packet = Packet.decode(data)
         if packet:
-            def clean_buffer(i, g):
-                self.logger.debug("removing message {0} from buffer".format(i))
-                for p in g[i]:
-                    self._buffer.remove(p)
             self._buffer.append(packet)
             packet_groups = group(self._buffer)
             for uuid in packet_groups.keys():
@@ -141,7 +149,7 @@ class Processor(object):
                     self.logger.debug("got object {0} from {1}".format(obj, uuid))
                     if isinstance(obj, Status):
                         self.update_status(obj)
-                        clean_buffer(uuid, packet_groups)
+                        self.clean_buffer(uuid)
                     elif isinstance(obj, ReBalance):
                         self.logger.info("re-balance received")
                         self.storage.cluster_jobs.clear()
@@ -153,13 +161,12 @@ class Processor(object):
                             self.remove_job(obj)
                         else:
                             self.add_job(obj)
-                        clean_buffer(uuid, packet_groups)
+                        self.clean_buffer(uuid)
                     elif isinstance(obj, Run):
-                        await self.run(obj)
-                        clean_buffer(uuid, packet_groups)
+                        await self.run(obj, uuid)
                     elif isinstance(obj, Kill):
                         self.kill(obj)
-                        clean_buffer(uuid, packet_groups)
+                        self.clean_buffer(uuid)
         self.storage.prune()
         self.queue.task_done()
         if not self.queue.empty():
