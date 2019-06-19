@@ -85,9 +85,11 @@ class Processor(object):
                 if existing_job and existing_job == new_job:
                     self.logger.info("job already defined in tab, skipping it")
                 else:
-                    self.logger.info("adding job {0} to cron {1}".format(new_job, self.cron.filename))
-                    if self.user:
+                    if self.user and not new_job.user:
                         new_job.user = self.user
+                    if self.cron and not new_job.cron:
+                        new_job.cron = self.cron
+                    self.logger.info("adding job {0} to cron {1}".format(new_job, self.cron.filename))
                     self.cron.append(new_job)
                     self.cron.write()
         else:
