@@ -88,9 +88,9 @@ def main():
         if args.cron == 'memory':
             processor = Processor(args.udp_communication_port, storage, cron=CronTab(tab="""* * * * * command"""))
         elif args.cron_user:
-            processor = Processor(args.udp_communication_port, storage, cron=CronTab(tabfile=args.cron, user=args.cron_user))
+            processor = Processor(args.udp_communication_port, storage, cron=CronTab(tabfile=args.cron, user=args.cron_user), user=args.cron_user)
         else:
-            processor = Processor(args.udp_communication_port, storage, cron=CronTab(tabfile=args.cron, user=False))
+            processor = Processor(args.udp_communication_port, storage, cron=CronTab(tabfile=args.cron, user=False), user='root')
     else:
         processor = Processor(args.udp_communication_port, storage)
 

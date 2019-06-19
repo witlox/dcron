@@ -42,7 +42,7 @@ class Processor(object):
 
     logger = logging.getLogger(__name__)
 
-    def __init__(self, udp_port, storage, cron=None):
+    def __init__(self, udp_port, storage, cron=None, user=None):
         self.queue = asyncio.Queue()
         self._buffer = []
         self.udp_port = udp_port
@@ -51,6 +51,7 @@ class Processor(object):
             self.cron = CronTab(tabfile='/etc/crontab', user=False)
         else:
             self.cron = cron
+        self.user = user
 
     def update_status(self, status_message):
         self.logger.debug("got full status message in buffer ({0}".format(status_message))
@@ -85,6 +86,8 @@ class Processor(object):
                     self.logger.info("job already defined in tab, skipping it")
                 else:
                     self.logger.info("adding job {0} to cron {1}".format(new_job, self.cron.filename))
+                    if self.user:
+                        new_job.user = self.user
                     self.cron.append(new_job)
                     self.cron.write()
         else:

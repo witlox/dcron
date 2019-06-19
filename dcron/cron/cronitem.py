@@ -232,7 +232,9 @@ class CronItem(object):
                 if data and (not self.user or data['user'] == self.user):
                     result.append(data)
         except FileNotFoundError:
-            pass
+            self.logger.error("could not find syslog file for retrieving logs for {0}".format(self.command))
+        except PermissionError:
+            self.logger.error("could not access syslog file for retrieving logs for {0}".format(self.command))
         return result
 
     @property
