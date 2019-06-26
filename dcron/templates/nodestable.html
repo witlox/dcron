@@ -16,7 +16,7 @@
         <tr>
         {% endif %}
             <td width="30%">{{ node.ip }}</td>
-            <td width="30%">{{ node.time.strftime('%d.%m.%Y %H:%M:%S') }}</td>
+            <td width="30%">{{ node.time }}</td>
             <td width="30%">{{ "{:,.2f}".format(node.system_load) }}%</td>
         </tr>
         {% endfor %}

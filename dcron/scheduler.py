@@ -28,6 +28,8 @@ import logging
 from datetime import timedelta, datetime
 from random import shuffle
 
+from dateutil import parser
+
 
 class Scheduler(object):
     """
@@ -47,7 +49,7 @@ class Scheduler(object):
 
     def active_nodes(self):
         for node in self.storage.cluster_state():
-            if datetime.utcnow() - node.time < timedelta(seconds=self.staleness):
+            if datetime.utcnow() - parser.parse(node.time) < timedelta(seconds=self.staleness):
                 yield node
             else:
                 node.state = 'disconnected'

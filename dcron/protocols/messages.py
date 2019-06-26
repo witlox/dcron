@@ -54,7 +54,7 @@ class Status(object):
         :param system_load: system load (0-100%)
         """
         self.ip = ip
-        self.time = datetime.utcnow()
+        self.time = datetime.now().isoformat()
         self.system_load = system_load
         self.state = 'running'
 

@@ -25,6 +25,33 @@
             elem.style.display = "none";
         }
     }
+    function addJob() {
+        let request_data = {
+            'command': document.getElementById("command").value,
+            'minute': document.getElementById("minute").value,
+            'hour': document.getElementById("hour").value,
+            'dom': document.getElementById("dom").value,
+            'month': document.getElementById("month").value,
+            'dow': document.getElementById("dow").value
+        };
+        if (document.getElementById("disabled").checked) {
+            request_data['disabled'] = 'true';
+        }
+        $.ajax({
+            url: '/add_job',
+            data: request_data,
+            type: 'POST',
+            success: function (result) {
+                console.log(result);
+                let elem = document.getElementById("addcronform");
+                elem.style.display = "none";
+            },
+            error: function (xhr) {
+                console.log(xhr.status);
+                console.log(xhr.responseText);
+            }
+        });
+    }
     function toggleJob(elem) {
         let kve = $(elem).data("cmd").split(',');
         let request_data = {};
@@ -37,6 +64,10 @@
             type: 'POST',
             success: function (result) {
                 console.log(result);
+            },
+            error: function (xhr) {
+                console.log(xhr.status);
+                console.log(xhr.responseText);
             }
         });
     }
@@ -52,6 +83,10 @@
             type: 'POST',
             success: function (result) {
                 console.log(result);
+            },
+            error: function (xhr) {
+                console.log(xhr.status);
+                console.log(xhr.responseText);
             }
         });
     }
@@ -69,7 +104,7 @@
                 console.log(result);
                 $('#joblog').html(result);
             },
-            error: function (xhr, ajaxOptions, thrownError) {
+            error: function (xhr) {
                 console.log(xhr.status);
                 console.log(xhr.responseText);
             }
@@ -88,6 +123,10 @@
             type: 'POST',
             success: function (result) {
                 console.log(result);
+            },
+            error: function (xhr) {
+                console.log(xhr.status);
+                console.log(xhr.responseText);
             }
         });
     }
@@ -103,6 +142,49 @@
             type: 'POST',
             success: function (result) {
                 console.log(result);
+            },
+            error: function (xhr) {
+                console.log(xhr.status);
+                console.log(xhr.responseText);
+            }
+        });
+    }
+    function importJobs(event) {
+        let input = event.target;
+        let reader = new FileReader();
+        reader.onload = function() {
+            let request_data = {'payload': reader.result};
+            $.ajax({
+                url: '/import',
+                data: request_data,
+                type: 'POST',
+                success: function (result) {
+                    console.log(result);
+                },
+                error: function (xhr) {
+                    console.log(xhr.status);
+                    console.log(xhr.responseText);
+                }
+            });
+        };
+        reader.readAsText(input.files[0]);
+    }
+    function exportJobs(event) {
+        $.ajax({
+            url: '/export',
+            type: 'GET',
+            success: function (result) {
+                let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(result));
+                let downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href",     dataStr);
+                downloadAnchorNode.setAttribute("download", "jobs.json");
+                document.body.appendChild(downloadAnchorNode); // required for firefox
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
+            },
+            error: function (xhr) {
+                console.log(xhr.status);
+                console.log(xhr.responseText);
             }
         });
     }
@@ -117,6 +199,12 @@ dcron console
 <div id="nodestable"></div>
 <p>overview of active nodes</p>
 <br/><br/>
+<div align="center">
+    <table>
+        <tr><td style="text-align:right" width="50%">import jobs</td><td style="text-align:left" width="50%"><input type="file" accept="application/json" onchange="importJobs(event)"></td></tr>
+        <tr><td style="text-align:right" width="50%">export jobs</td><td style="text-align:left" width="50%"><input type='button' id='download' value='Download' onclick="exportJobs(event)"></td></tr>
+    </table>
+</div>
 <div id="jobstable"></div>
 <p>overview of active jobs</p>
 <div align="center" style="display:none" id="joblogdiv">
@@ -127,7 +215,7 @@ dcron console
 <div align="center">
     <button id="addcron" onclick="formVisibility();">add cron job</button>
     <br/>
-    <form id="addcronform" action="/add_job" method="post" name="addcronform" style="display:none" accept-charset="utf-8" enctype="application/x-www-form-urlencoded">
+    <form id="addcronform" action="javascript:addJob()" name="addcronform" style="display:none" accept-charset="utf-8" enctype="application/x-www-form-urlencoded">
         <table>
             <tr>
                 <td><label for="minute">Minute</label></td>

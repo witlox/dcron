@@ -150,7 +150,7 @@ def main():
 
         logger.info("starting web application server on http://{0}:{1}/".format(get_ip(), args.web_port))
 
-        s = Site(storage, args.udp_communication_port)
+        s = Site(storage, args.udp_communication_port, cron=processor.cron)
         runner = AppRunner(s.app)
         loop.run_until_complete(runner.setup())
         site_instance = TCPSite(runner, port=args.web_port)

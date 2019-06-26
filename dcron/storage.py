@@ -117,7 +117,7 @@ class Storage(object):
         node_status = [status for status in self.cluster_status if status.ip == ip]
         if len(node_status) == 0:
             return None
-        sorted_status = sorted(node_status, key=lambda s: s.time, reverse=True)
+        sorted_status = sorted(node_status, key=lambda s: parser.parse(s.time), reverse=True)
         if not sorted_status:
             return None
         return sorted_status[0]
@@ -150,6 +150,7 @@ class CronEncoder(JSONEncoder):
                 'comment': o.comment,
                 'command': o.command,
                 'last_run': last_run,
+                'pid': o.pid,
                 'assigned_to': o.assigned_to,
                 'log': o._log,
                 'parts': str(o.parts)
@@ -164,15 +165,15 @@ class CronEncoder(JSONEncoder):
             }
         elif isinstance(o, Status):
             time = ''
-            if o.time:
-                time = o.time.strftime("{} {}".format(DATE_FORMAT, TIME_FORMAT))
             return {
                 '_type': 'status',
                 'ip': o.ip,
                 'state': o.state,
                 'load': o.system_load,
-                'time': time
+                'time': o.time
             }
+        elif isinstance(o, list):
+            return json.dumps(o, cls=CronEncoder)
         return JSONEncoder.default(self, o)
 
 
@@ -192,6 +193,7 @@ class CronDecoder(JSONDecoder):
             cron_item.enable(obj['enabled'])
             cron_item.comment = obj['comment']
             cron_item.assigned_to = obj['assigned_to']
+            cron_item.pid = obj['pid']
             cron_item._log = obj['log']
             if obj['last_run'] != '':
                 cron_item.last_run = parser.parse(obj['last_run'])
@@ -204,8 +206,7 @@ class CronDecoder(JSONDecoder):
             status.system_load = obj['load']
             status.state = obj['state']
             status.ip = obj['ip']
-            if obj['time'] != '':
-                status.time = parser.parse(obj['time'])
+            status.time = obj['time']
             return status
         return obj
 
