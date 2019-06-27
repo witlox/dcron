@@ -42,7 +42,7 @@ class Processor(object):
 
     logger = logging.getLogger(__name__)
 
-    def __init__(self, udp_port, storage, cron=None, user=None):
+    def __init__(self, udp_port, storage, cron=None, user=None, hash_key=None):
         self.queue = asyncio.Queue()
         self._buffer = []
         self.udp_port = udp_port
@@ -52,6 +52,7 @@ class Processor(object):
         else:
             self.cron = cron
         self.user = user
+        self.hash_key = hash_key
 
     def update_status(self, status_message):
         self.logger.debug("got full status message in buffer ({0}".format(status_message))
@@ -127,7 +128,7 @@ class Processor(object):
                 self.logger.warning("error during execution of {0}: {1}".format(run.job.command, std_err))
             self.logger.info("output of {0} with code {1}: {2}".format(job.command, exit_code, std_out))
             job.append_log("{0:%b %d %H:%M:%S} localhost CRON[{1}] exit code: {2}, out: {3}, err: {4}".format(datetime.now(), process.pid, exit_code, std_out, std_err))
-            broadcast(self.udp_port, UdpSerializer.dump(job))
+            broadcast(self.udp_port, UdpSerializer.dump(job, self.hash_key))
             self.clean_buffer(uuid)
 
     def kill(self, kill):
@@ -165,7 +166,7 @@ class Processor(object):
             packet_groups = group(self._buffer)
             for uuid in packet_groups.keys():
                 self.logger.debug("identifying packet group for {0}".format(uuid))
-                obj = UdpSerializer.load(packet_groups[uuid])
+                obj = UdpSerializer.load(packet_groups[uuid], self.hash_key)
                 if obj:
                     self.logger.debug("got object {0} from {1}".format(obj, uuid))
                     if isinstance(obj, Status):

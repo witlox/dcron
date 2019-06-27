@@ -24,9 +24,12 @@
 # SOFTWARE.
 
 import pickle
+import hashlib
+import hmac
 
 from math import ceil
 from uuid import uuid4
+
 
 from dcron.protocols.packet import Packet
 
@@ -37,22 +40,27 @@ class UdpSerializer(object):
     """
     
     @staticmethod
-    def dump(obj):
+    def dump(obj, hash_key=None):
         """
         serialize your object to list of (raw) udp_packet
+        :param obj: object to convert
+        :param hash_key: key for use in signature
         :return: udp_packets
         """
         buffer = pickle.dumps(obj)
+        if hash_key:
+            buffer += b' ' + hmac.new(hash_key.encode('utf-8'), buffer, hashlib.sha1).digest()
         total = ceil(len(buffer) / Packet.data_size)
         uuid = str(uuid4())
         for i in range(total):
             yield Packet(uuid, total, i, buffer[i * Packet.data_size:(i + 1) * Packet.data_size]).encode()
 
     @staticmethod
-    def load(data):
+    def load(data, hash_key=None):
         """
         construct object from udp packets
         :param data: list of raw udp_packet
+        :param hash_key: key for use in signature
         :return: the object or None
         """
         packets = []
@@ -73,4 +81,10 @@ class UdpSerializer(object):
         buffer = b''
         for p in sorted(packets, key=lambda x: x.index):
             buffer += p.data
+        if hash_key:
+            data, digest = buffer.split(b' ')
+            if digest == hmac.new(hash_key.encode('utf-8'), data, hashlib.sha1).digest():
+                return pickle.loads(data)
+            else:
+                return None
         return pickle.loads(buffer)

@@ -63,6 +63,7 @@ def main():
     parser.add_argument('-w', '--web-port', type=int, default=8080, help='web hosting port (default: 8080)')
     parser.add_argument('-n', '--ntp-server', default='pool.ntp.org', help='NTP server to detect clock skew (default: pool.ntp.org)')
     parser.add_argument('-s', '--node-staleness', type=int, default=180, help='Time in seconds of non-communication for a node to be marked as stale (defailt: 180s)')
+    parser.add_argument('-x', '--hash-key', default='abracadabra', help="String to use for verifying UDP traffic (to disable use '')")
     parser.add_argument('-v', '--verbose', action='store_true', default=False, help='verbose logging')
 
     args = parser.parse_args()
@@ -94,6 +95,10 @@ def main():
     else:
         processor = Processor(args.udp_communication_port, storage, user='root')
 
+    hash_key = None
+    if args.hash_key != '':
+        hash_key = args.hash_key
+
     with StatusProtocolServer(processor, args.udp_communication_port) as loop:
 
         running = True
@@ -106,11 +111,11 @@ def main():
             """
             while running:
                 time.sleep(5)
-                broadcast(args.udp_communication_port, UdpSerializer.dump(Status(get_ip(), get_load())))
+                broadcast(args.udp_communication_port, UdpSerializer.dump(Status(get_ip(), get_load()), hash_key))
                 for job in storage.cluster_jobs:
                     if job.assigned_to == get_ip():
                         job.pid = check_process(job.command)
-                    for packet in UdpSerializer.dump(job):
+                    for packet in UdpSerializer.dump(job, hash_key):
                         client(args.udp_communication_port, packet)
 
         def timed_schedule():
@@ -122,11 +127,11 @@ def main():
                 if not scheduler.check_cluster_state():
                     logger.info("re-balancing cluster")
                     jobs = storage.cluster_jobs.copy()
-                    for packet in UdpSerializer.dump(ReBalance(timestamp=datetime.now())):
+                    for packet in UdpSerializer.dump(ReBalance(timestamp=datetime.now()), hash_key):
                         client(args.udp_communication_port, packet)
                     time.sleep(5)
                     for job in jobs:
-                        for packet in UdpSerializer.dump(job):
+                        for packet in UdpSerializer.dump(job, hash_key):
                             client(args.udp_communication_port, packet)
 
         async def scheduled_broadcast():
@@ -150,7 +155,7 @@ def main():
 
         logger.info("starting web application server on http://{0}:{1}/".format(get_ip(), args.web_port))
 
-        s = Site(storage, args.udp_communication_port, cron=processor.cron)
+        s = Site(storage, args.udp_communication_port, cron=processor.cron, hash_key=hash_key)
         runner = AppRunner(s.app)
         loop.run_until_complete(runner.setup())
         site_instance = TCPSite(runner, port=args.web_port)

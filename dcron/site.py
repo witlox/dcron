@@ -50,10 +50,11 @@ class Site(object):
 
     root = pathlib.Path(__file__).parent
 
-    def __init__(self, storage, udp_port, cron=None):
+    def __init__(self, storage, udp_port, cron=None, hash_key=None):
         self.cron = cron
         self.storage = storage
         self.udp_port = udp_port
+        self.hash_key = hash_key
         self.app = web.Application()
         aiohttp_jinja2.setup(self.app, loader=jinja2.PackageLoader('dcron', 'templates'))
         self.app.router.add_static('/static/', path=self.root/'static', name='static')
@@ -145,7 +146,7 @@ class Site(object):
 
         self.logger.debug("broadcasting kill result")
 
-        broadcast(self.udp_port, UdpSerializer.dump(Kill(cron_item)))
+        broadcast(self.udp_port, UdpSerializer.dump(Kill(cron_item), self.hash_key))
 
         raise web.HTTPAccepted()
 
@@ -169,7 +170,7 @@ class Site(object):
 
         self.logger.debug("broadcasting run result")
 
-        broadcast(self.udp_port, UdpSerializer.dump(Run(cron_item)))
+        broadcast(self.udp_port, UdpSerializer.dump(Run(cron_item), self.hash_key))
 
         raise web.HTTPAccepted()
 
@@ -193,7 +194,7 @@ class Site(object):
 
         self.logger.debug("broadcasting run result")
 
-        broadcast(self.udp_port, UdpSerializer.dump(Toggle(cron_item)))
+        broadcast(self.udp_port, UdpSerializer.dump(Toggle(cron_item), self.hash_key))
 
         raise web.HTTPAccepted()
 
@@ -220,7 +221,7 @@ class Site(object):
 
         self.logger.debug("broadcasting add result")
 
-        broadcast(self.udp_port, UdpSerializer.dump(cron_item))
+        broadcast(self.udp_port, UdpSerializer.dump(cron_item, self.hash_key))
 
         raise web.HTTPCreated()
 
@@ -244,7 +245,7 @@ class Site(object):
 
         self.logger.debug("broadcasting remove result")
 
-        broadcast(self.udp_port, UdpSerializer.dump(cron_item))
+        broadcast(self.udp_port, UdpSerializer.dump(cron_item, self.hash_key))
 
         raise web.HTTPAccepted()
 
@@ -281,7 +282,7 @@ class Site(object):
                     cron_item.set_all(line['pattern'])
                     cron_item.enable(line['enabled'])
                     self.logger.debug("received new job from import {0}, broadcasting it.".format(cron_item))
-                    broadcast(self.udp_port, UdpSerializer.dump(cron_item))
+                    broadcast(self.udp_port, UdpSerializer.dump(cron_item, self.hash_key))
                 else:
                     self.logger.error("import element invalid: {0}".format(line))
             return web.HTTPOk()
