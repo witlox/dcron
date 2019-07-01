@@ -59,7 +59,7 @@ def main():
     parser.add_argument('-p', '--storage-path', default=None, help='directory where to store cache')
     parser.add_argument('-u', '--udp-communication-port', type=int, default=12345, help='communication port (default: 12345)')
     parser.add_argument('-c', '--cron', default=None, help='crontab to use (default: /etc/crontab, use `memory` to not save to file')
-    parser.add_argument('-d', '--cron-user', default=None, help='user to user for storing cron entries')
+    parser.add_argument('-d', '--cron-user', default=None, help='user for storing cron entries')
     parser.add_argument('-w', '--web-port', type=int, default=8080, help='web hosting port (default: 8080)')
     parser.add_argument('-n', '--ntp-server', default='pool.ntp.org', help='NTP server to detect clock skew (default: pool.ntp.org)')
     parser.add_argument('-s', '--node-staleness', type=int, default=180, help='Time in seconds of non-communication for a node to be marked as stale (defailt: 180s)')
@@ -155,7 +155,10 @@ def main():
 
         logger.info("starting web application server on http://{0}:{1}/".format(get_ip(), args.web_port))
 
-        s = Site(storage, args.udp_communication_port, cron=processor.cron, hash_key=hash_key)
+        if args.cron_user:
+            s = Site(storage, args.udp_communication_port, cron=processor.cron, user=args.cron_user, hash_key=hash_key)
+        else:
+            s = Site(storage, args.udp_communication_port, cron=processor.cron, hash_key=hash_key)
         runner = AppRunner(s.app)
         loop.run_until_complete(runner.setup())
         site_instance = TCPSite(runner, port=args.web_port)

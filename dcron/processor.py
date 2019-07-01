@@ -90,7 +90,7 @@ class Processor(object):
                         new_job.user = self.user
                     if self.cron and not new_job.cron:
                         new_job.cron = self.cron
-                    self.logger.info("adding job {0} to cron {1}".format(new_job, self.cron.filename))
+                    self.logger.info("adding job {0} to cron {1} for user {2}".format(new_job, self.cron.filename, new_job.user))
                     self.cron.append(new_job)
                     self.cron.write()
         else:

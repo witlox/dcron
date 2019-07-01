@@ -23,6 +23,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import logging
 import pickle
 import hashlib
 import hmac
@@ -38,6 +39,8 @@ class UdpSerializer(object):
     """
     Serialization methods for UDP Packets
     """
+
+    logger = logging.getLogger(__name__)
     
     @staticmethod
     def dump(obj, hash_key=None):
@@ -76,6 +79,7 @@ class UdpSerializer(object):
         given = [i.index for i in packets]
         missing = [x for x in expected if x not in given]
         if len(missing) > 0:
+            UdpSerializer.logger.debug("packet validation failed, probably partial")
             return None
         # validation passed
         buffer = b''
@@ -86,5 +90,6 @@ class UdpSerializer(object):
             if digest == hmac.new(hash_key.encode('utf-8'), data, hashlib.sha1).digest():
                 return pickle.loads(data)
             else:
+                UdpSerializer.logger.warning("invalid message signature")
                 return None
         return pickle.loads(buffer)

@@ -36,17 +36,19 @@ def client(port, data):
     logger = logging.getLogger('udp_client')
 
     addr = ('255.255.255.255', port)
-    udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    if hasattr(socket, 'SO_BROADCAST'):
-        udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp_socket:
 
-    if udp_socket.sendto(data, addr):
-        logger.debug("sent data {0} to port {1}".format(data, port))
-    else:
-        logger.warning("failed to send data to port {0}".format(port))
+        if hasattr(socket, 'SO_BROADCAST'):
+            udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-    udp_socket.close()
+        try:
+            if udp_socket.sendto(data, addr):
+                logger.debug("sent data {0} to port {1}".format(data, port))
+            else:
+                logger.warning("failed to send data to port {0}".format(port))
+        except OSError as e:
+            logger.error("failure sending UDP data: {0}".format(e))
 
 
 def broadcast(udp_port, packets):

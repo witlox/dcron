@@ -50,10 +50,11 @@ class Site(object):
 
     root = pathlib.Path(__file__).parent
 
-    def __init__(self, storage, udp_port, cron=None, hash_key=None):
+    def __init__(self, storage, udp_port, cron=None, user=None, hash_key=None):
         self.cron = cron
         self.storage = storage
         self.udp_port = udp_port
+        self.user = user
         self.hash_key = hash_key
         self.app = web.Application()
         aiohttp_jinja2.setup(self.app, loader=jinja2.PackageLoader('dcron', 'templates'))
@@ -293,6 +294,10 @@ class Site(object):
     def generate_cron_item(self, data, removable=False):
 
         cron_item = CronItem(command=data['command'])
+        if self.user:
+            cron_item.user = self.user
+        else:
+            cron_item.user = 'root'
         cron_item.remove = removable
 
         pattern = '{0} {1} {2} {3} {4}'.format(data['minute'], data['hour'], data['dom'], data['month'], data['dow'])
