@@ -150,9 +150,12 @@ class Processor(object):
         """
         self.logger.debug("removing message {0} from buffer".format(uuid))
         g = group(self._buffer)
-        for p in g[uuid]:
-            if p in self._buffer:
-                self._buffer.remove(p)
+        if uuid in g:
+            for p in g[uuid]:
+                if p in self._buffer:
+                    self._buffer.remove(p)
+        else:
+            self.logger.warning("message {0} not in buffer, skipping clean".format(uuid))
 
     async def process(self):
         """
