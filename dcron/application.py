@@ -58,6 +58,7 @@ def main():
     parser.add_argument('-l', '--log-file', default=None, help='path to store logfile')
     parser.add_argument('-p', '--storage-path', default=None, help='directory where to store cache')
     parser.add_argument('-u', '--udp-communication-port', type=int, default=12345, help='communication port (default: 12345)')
+    parser.add_argument('-i', '--broadcast-interval', type=int, default=5, help='interval for broadcasting data over UDP')
     parser.add_argument('-c', '--cron', default=None, help='crontab to use (default: /etc/crontab, use `memory` to not save to file')
     parser.add_argument('-d', '--cron-user', default=None, help='user for storing cron entries')
     parser.add_argument('-w', '--web-port', type=int, default=8080, help='web hosting port (default: 8080)')
@@ -110,13 +111,13 @@ def main():
             periodically broadcast system status and known jobs
             """
             while running:
-                time.sleep(5)
                 broadcast(args.udp_communication_port, UdpSerializer.dump(Status(get_ip(), get_load()), hash_key))
                 for job in storage.cluster_jobs:
                     if job.assigned_to == get_ip():
                         job.pid = check_process(job.command)
                     for packet in UdpSerializer.dump(job, hash_key):
                         client(args.udp_communication_port, packet)
+                time.sleep(args.broadcast_interval)
 
         def timed_schedule():
             """
@@ -148,6 +149,7 @@ def main():
                 await asyncio.sleep(100)
                 await storage.save()
 
+        logger.info("setting broadcast interval to {0} seconds".format(args.broadcast_interval))
         loop.create_task(scheduled_broadcast())
         loop.create_task(scheduled_rebalance())
         if args.storage_path:
