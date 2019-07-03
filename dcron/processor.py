@@ -25,6 +25,7 @@
 
 import asyncio
 import logging
+import subprocess
 from datetime import datetime
 
 from dcron.cron.crontab import CronTab, CronItem
@@ -120,10 +121,10 @@ class Processor(object):
         if job and job.assigned_to == get_ip():
             self.logger.info("am owner for job {0}".format(job))
             run.timestamp = datetime.now()
-            process = await asyncio.create_subprocess_shell(run.job.command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+            process = subprocess.Popen(run.job.command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, shell=True)
             self.logger.info("{0} has been defined, going to execute".format(job.command))
-            std_out, std_err = await process.communicate()
-            exit_code = await process.wait()
+            std_out, std_err = process.communicate()
+            exit_code = process.wait()
             if std_err:
                 self.logger.warning("error during execution of {0}: {1}".format(run.job.command, std_err))
             self.logger.info("output of {0} with code {1}: {2}".format(job.command, exit_code, std_out))
