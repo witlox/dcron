@@ -85,7 +85,7 @@ class Storage(object):
         self.logger.debug("auto-save")
         if self.path_prefix:
             path = join(self.path_prefix, 'cluster_status.json')
-            cluster_status = self.cluster_status
+            cluster_status = self.cluster_status.copy()
             if cluster_status:
                 self.logger.debug("saving status cache to {0}".format(path))
                 async with aiofiles.open(path, 'w') as handle:
@@ -93,7 +93,7 @@ class Storage(object):
             else:
                 self.logger.debug("cluster status empty, not saving it.")
             path = join(self.path_prefix, 'cluster_jobs.json')
-            cluster_jobs = self.cluster_jobs
+            cluster_jobs = self.cluster_jobs.copy()
             if cluster_jobs:
                 self.logger.debug("saving job cache to {0}".format(path))
                 async with aiofiles.open(path, 'w') as handle:
