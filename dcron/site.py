@@ -26,6 +26,8 @@
 import json
 import logging
 import pathlib
+import time
+from datetime import datetime
 
 import jinja2
 
@@ -35,7 +37,7 @@ import aiohttp_jinja2 as aiohttp_jinja2
 
 from dcron.cron.cronitem import CronItem
 from dcron.datagram.client import broadcast
-from dcron.protocols.messages import Kill, Run, Toggle
+from dcron.protocols.messages import Kill, Run, Toggle, ReBalance
 from dcron.protocols.udpserializer import UdpSerializer
 from dcron.storage import CronEncoder
 from dcron.utils import get_ip
@@ -133,6 +135,14 @@ class Site(object):
         self.logger.debug("rebalance request received")
 
         self.scheduler.re_balance()
+
+        jobs = self.storage.cluster_jobs.copy()
+
+        broadcast(self.udp_port, UdpSerializer.dump(ReBalance(timestamp=datetime.now()), self.hash_key))
+
+        time.sleep(5)
+        for job in jobs:
+            broadcast(self.udp_port, UdpSerializer.dump(job, self.hash_key))
 
         raise web.HTTPAccepted()
 
