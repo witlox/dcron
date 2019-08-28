@@ -26,6 +26,7 @@
 import asyncio
 import logging
 import json
+import os
 
 from datetime import datetime
 from dateutil import parser
@@ -59,17 +60,23 @@ class Storage(object):
             path = join(self.path_prefix, 'cluster_status.json')
             if not exists(path):
                 self.logger.info("no previous cache detected on {0}".format(path))
-                return
-            self.logger.debug("loading cache from {0}".format(path))
-            with open(path, 'r') as handle:
-                self.cluster_status = json.loads(handle.readline(), cls=CronDecoder)
+            elif os.stat(path).st_size == 0:
+                self.logger.error("{0} size is zero, something went wrong while saving it! deleting the emtpy file".format(path))
+                os.remove(path)
+            else:
+                self.logger.debug("loading cache from {0}".format(path))
+                with open(path, 'r') as handle:
+                    self.cluster_status = json.loads(handle.readline(), cls=CronDecoder)
             path = join(self.path_prefix, 'cluster_jobs.json')
             if not exists(path):
                 self.logger.info("no previous cache detected on {0}".format(path))
-                return
-            self.logger.debug("loading cache from {0}".format(path))
-            with open(path, 'r') as handle:
-                self.cluster_jobs = json.loads(handle.readline(), cls=CronDecoder)
+            elif os.stat(path).st_size == 0:
+                self.logger.error("{0} size is zero, something went wrong while saving it! deleting the emtpy file".format(path))
+                os.remove(path)
+            else:
+                self.logger.debug("loading cache from {0}".format(path))
+                with open(path, 'r') as handle:
+                    self.cluster_jobs = json.loads(handle.readline(), cls=CronDecoder)
 
     async def save(self):
         """
@@ -78,13 +85,21 @@ class Storage(object):
         self.logger.debug("auto-save")
         if self.path_prefix:
             path = join(self.path_prefix, 'cluster_status.json')
-            self.logger.debug("saving status cache to {0}".format(path))
-            async with aiofiles.open(path, 'w') as handle:
-                await handle.write(json.dumps(self.cluster_status, cls=CronEncoder))
+            cluster_status = self.cluster_status
+            if cluster_status:
+                self.logger.debug("saving status cache to {0}".format(path))
+                async with aiofiles.open(path, 'w') as handle:
+                    await handle.write(json.dumps(cluster_status, cls=CronEncoder))
+            else:
+                self.logger.debug("cluster status empty, not saving it.")
             path = join(self.path_prefix, 'cluster_jobs.json')
-            self.logger.debug("saving job cache to {0}".format(path))
-            async with aiofiles.open(path, 'w') as handle:
-                await handle.write(json.dumps(self.cluster_jobs, cls=CronEncoder))
+            cluster_jobs = self.cluster_jobs
+            if cluster_jobs:
+                self.logger.debug("saving job cache to {0}".format(path))
+                async with aiofiles.open(path, 'w') as handle:
+                    await handle.write(json.dumps(cluster_jobs, cls=CronEncoder))
+            else:
+                self.logger.debug("cluster jobs empty, not saving it.")
         else:
             self.logger.warning("no path specified for cache, cannot save")
             await asyncio.sleep(0.1)

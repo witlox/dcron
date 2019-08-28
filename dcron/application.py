@@ -92,7 +92,7 @@ def main():
         elif args.cron_user:
             processor = Processor(args.udp_communication_port, storage, cron=CronTab(tabfile=args.cron, user=args.cron_user), user=args.cron_user)
         else:
-            processor = Processor(args.udp_communication_port, storage, cron=CronTab(tabfile=args.cron, user=False), user='root')
+            processor = Processor(args.udp_communication_port, storage, cron=CronTab(tabfile=args.cron, user='root'), user='root')
     else:
         processor = Processor(args.udp_communication_port, storage, user='root')
 
@@ -158,9 +158,9 @@ def main():
         logger.info("starting web application server on http://{0}:{1}/".format(get_ip(), args.web_port))
 
         if args.cron_user:
-            s = Site(storage, args.udp_communication_port, cron=processor.cron, user=args.cron_user, hash_key=hash_key)
+            s = Site(scheduler, storage, args.udp_communication_port, cron=processor.cron, user=args.cron_user, hash_key=hash_key)
         else:
-            s = Site(storage, args.udp_communication_port, cron=processor.cron, hash_key=hash_key)
+            s = Site(scheduler, storage, args.udp_communication_port, cron=processor.cron, hash_key=hash_key)
         runner = AppRunner(s.app)
         loop.run_until_complete(runner.setup())
         site_instance = TCPSite(runner, port=args.web_port)

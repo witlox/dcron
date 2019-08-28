@@ -50,10 +50,11 @@ class Site(object):
 
     root = pathlib.Path(__file__).parent
 
-    def __init__(self, storage, udp_port, cron=None, user=None, hash_key=None):
-        self.cron = cron
+    def __init__(self, scheduler, storage, udp_port, cron=None, user=None, hash_key=None):
+        self.scheduler = scheduler
         self.storage = storage
         self.udp_port = udp_port
+        self.cron = cron
         self.user = user
         self.hash_key = hash_key
         self.app = web.Application()
@@ -72,7 +73,8 @@ class Site(object):
                              web.post('/run_job', self.run_job),
                              web.post('/toggle_job', self.toggle_job),
                              web.get('/export', self.export_data),
-                             web.post('/import', self.import_data)])
+                             web.post('/import', self.import_data),
+                             web.post('/re-balance', self.re_balance)])
 
     @aiohttp_jinja2.template('index.html')
     async def get(self, request):
@@ -126,6 +128,13 @@ class Site(object):
             if job == cron_item:
                 return dict(job=job)
         return dict(job=cron_item)
+
+    async def re_balance(self, request):
+        self.logger.debug("rebalance request received")
+
+        self.scheduler.re_balance()
+
+        raise web.HTTPAccepted()
 
     async def kill_job(self, request):
         data = await request.post()
